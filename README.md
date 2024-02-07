@@ -80,30 +80,22 @@ pip install -r requirements.txt
 
 2. Train the Grasping Field model:
 ```
-bash dist_train.sh 4 1234 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml --gpu 0-3 use_lmdb True
-```
-or 
-```
 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml
 ```
 4. Train the AlignSDF model:
-```
-bash dist_train.sh 4 1234 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml --gpu 0-3 use_lmdb True
-```
-or
 ```
 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
 ```
 5. Train the gSDF model:
 ```
 # It first needs to train a checkpoint for hand pose estimation.
-bash dist_train.sh 4 1234 -e ../playground/pose_kpt/experiments/obman_hand.yaml --gpu 0-3 use_lmdb True
+python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/obman_hand.yaml
 
 # Then, load the pretrained pose checkpoint and train the SDF model.
-bash dist_train.sh 4 1234 -e ../playground/hsdf_osdf_2net_pa/experiments/obman_presnet18_sresnet18_hkine6_okine6.yaml --gpu 0-3 use_lmdb True hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
+python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/obman_presnet18_sresnet18_hkine6_okine6.yaml
 
 # Train the model that processes multiple frames (DexYCB provides videos).
-bash dist_train.sh 4 1234 -e ../playground/hsdf_osdf_2net_video_pa/experiments/dexycbs0_3frames_presnet18_sresnet18_hkine6_okine6.yaml --gpu 0-3 use_lmdb True hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
+python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/dexycbs0_3frames_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
 ```
 
 ## Testing and Evaluation
