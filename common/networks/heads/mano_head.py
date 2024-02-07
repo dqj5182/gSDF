@@ -90,7 +90,7 @@ class ManoHead(nn.Module):
 
 if __name__ == "__main__":
     import sys
-    sys.path.insert(0, '/home/zerchen/workspace/code/ho_recon/common')
+    sys.path.insert(0, 'common')
     from mano.manolayer import ManoLayer
     net = ManoHead(depth=True)
     input_size = (2, 512)

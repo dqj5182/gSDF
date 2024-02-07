@@ -101,11 +101,11 @@ python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/d
 ## Testing and Evaluation
 Actually, when it finishes training, the script will launch the testing automatically. You could also launch the training explicitly by:
 ```
-bash dist_test.sh 4 1234 -e ../outputs/exp_name/somename.cfg --gpu 0-3
+python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman/exp.yaml
 ```
 After the testing phase ends, you could evaluate the performance:
 ```
-python eval.py -e ../outputs/exp_name/
+python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman
 ```
 
 ## Citation

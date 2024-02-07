@@ -304,7 +304,10 @@ def get_model(cfg, is_train):
     if cfg.fa_trans:
         feat_transformer = FactorizedVideoTransformer(image_size=16, num_frames=cfg.num_frames, depth=8, dim_head=256)
     else:
-        feat_transformer = VideoTransformer(image_size=16, num_frames=cfg.num_frames, depth=8, dim_head=256)
+        if cfg.num_frames == 3:
+            feat_transformer = VideoTransformer(image_size=16, num_frames=cfg.num_frames, depth=8, dim_head=256, use_temporary_embedding=True)
+        else:
+            feat_transformer = VideoTransformer(image_size=16, num_frames=cfg.num_frames, depth=8, dim_head=256)
 
     if cfg.hand_branch:
         hand_sdf_head = SDFHead(cfg.sdf_latent, cfg.hand_point_latent, cfg.sdf_head['dims'], cfg.sdf_head['dropout'], cfg.sdf_head['dropout_prob'], cfg.sdf_head['norm_layers'], cfg.sdf_head['latent_in'], cfg.hand_cls, cfg.sdf_head['num_class'])
