@@ -99,13 +99,23 @@ python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/d
 ```
 
 ## Testing and Evaluation
-Actually, when it finishes training, the script will launch the testing automatically. You could also launch the training explicitly by:
+Actually, when it finishes training, the script will launch the testing automatically. You could also launch the training explicitly by:\
+For Obman
 ```
 python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman/exp.yaml
 ```
+For DexYCB
+```
+python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video/exp.yaml
+```
 After the testing phase ends, you could evaluate the performance:
+For Obman
 ```
 python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman
+```
+For DexYCB
+```
+python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
 ```
 
 ## Citation
