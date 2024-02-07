@@ -82,11 +82,18 @@ pip install -r requirements.txt
 ```
 bash dist_train.sh 4 1234 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml --gpu 0-3 use_lmdb True
 ```
+or 
+```
+python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml
+```
 4. Train the AlignSDF model:
 ```
 bash dist_train.sh 4 1234 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml --gpu 0-3 use_lmdb True
 ```
-
+or
+```
+python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
+```
 5. Train the gSDF model:
 ```
 # It first needs to train a checkpoint for hand pose estimation.

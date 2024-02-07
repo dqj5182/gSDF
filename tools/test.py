@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', '-e', required=True, type=str)
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
-    parser.add_argument('--local_rank', default=0, type=int)
+    # parser.add_argument('--local_rank', default=0, type=int)
     parser.add_argument('--test_epoch', default=0, type=int)
     parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -50,17 +50,17 @@ def main():
     if args.test_epoch == 0:
         args.test_epoch = cfg.end_epoch - 1
 
-    local_rank = args.local_rank
-    device = 'cuda:%d' % local_rank
-    torch.cuda.set_device(local_rank)
-    torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    world_size = torch.distributed.get_world_size()
-    rank = torch.distributed.get_rank()
-    logger.info('Distributed Process %d, Total %d.' % (args.local_rank, world_size))
+    # local_rank = args.local_rank
+    # device = 'cuda:%d' % local_rank
+    # torch.cuda.set_device(local_rank)
+    # torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    # world_size = torch.distributed.get_world_size()
+    # rank = torch.distributed.get_rank()
+    # logger.info('Distributed Process %d, Total %d.' % (args.local_rank, world_size))
 
-    tester = Tester(local_rank, args.test_epoch)
+    tester = Tester(args.test_epoch)
     tester._make_batch_generator()
-    tester._make_model(local_rank)
+    tester._make_model()
 
     with torch.no_grad():
         for itr, (inputs, metas) in tqdm(enumerate(tester.batch_generator)):
