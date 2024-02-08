@@ -87,12 +87,22 @@ python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resn
 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
 ```
 5. Train the gSDF model:
+For Obman
 ```
 # It first needs to train a checkpoint for hand pose estimation.
 python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/obman_hand.yaml
 
 # Then, load the pretrained pose checkpoint and train the SDF model.
 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/obman_presnet18_sresnet18_hkine6_okine6.yaml
+```
+
+For DexYCB
+```
+# It first needs to train a checkpoint for hand pose estimation.
+python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/dexycb_s0_hand.yaml
+
+# Then, load the pretrained pose checkpoint and train the SDF model.
+python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/dexycbs0_presnet18_sresnet18_hkine6_okine6.yaml
 
 # Train the model that processes multiple frames (DexYCB provides videos).
 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/dexycbs0_3frames_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
