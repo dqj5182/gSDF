@@ -80,53 +80,53 @@ pip install -r requirements.txt
 
 2. Train the Grasping Field model:
 ```
-python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml
 ```
 4. Train the AlignSDF model:
 ```
-python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
 ```
 5. Train the gSDF model:
 
 For Obman
 ```
 # It first needs to train a checkpoint for hand pose estimation.
-python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/obman_hand.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/obman_hand.yaml
 
 # Then, load the pretrained pose checkpoint and train the SDF model.
-python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/obman_presnet18_sresnet18_hkine6_okine6.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/obman_presnet18_sresnet18_hkine6_okine6.yaml
 ```
 
 For DexYCB
 ```
 # It first needs to train a checkpoint for hand pose estimation.
-python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/dexycb_s0_hand.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/dexycb_s0_hand.yaml
 
 # Then, load the pretrained pose checkpoint and train the SDF model.
-python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/dexycbs0_presnet18_sresnet18_hkine6_okine6.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/dexycbs0_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt ../outputs/pose_kpt/dexycbs0_29k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump/snapshot_99.pth.tar
 
 # Train the model that processes multiple frames (DexYCB provides videos).
-python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/dexycbs0_3frames_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/dexycbs0_3frames_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
 ```
 
 ## Testing and Evaluation
 Actually, when it finishes training, the script will launch the testing automatically. You could also launch the training explicitly by:\
 For Obman
 ```
-python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman/exp.yaml
+CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman/exp.yaml
 ```
 For DexYCB
 ```
-python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video/exp.yaml
+CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video/exp.yaml
 ```
 After the testing phase ends, you could evaluate the performance:
 For Obman
 ```
-python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman
+CUDA_VISIBLE_DEVICES=1 python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman
 ```
 For DexYCB
 ```
-python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
+CUDA_VISIBLE_DEVICES=1 python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
 ```
 
 ## Citation
