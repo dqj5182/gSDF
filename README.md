@@ -87,6 +87,7 @@ python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resn
 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
 ```
 5. Train the gSDF model:
+
 For Obman
 ```
 # It first needs to train a checkpoint for hand pose estimation.
