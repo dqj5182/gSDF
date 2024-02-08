@@ -31,13 +31,13 @@ def ik_solver_mano(mano_shape, pred_joints):
     H = torch.matmul(T_0, P_0.transpose(1, 2))
     U, S, V_T = torch.linalg.svd(H)
     V = V_T.transpose(1, 2)
-    Rot = torch.matmul(V, U.transpose(1, 2)).to(pred_joints.device)
+    R = torch.matmul(V, U.transpose(1, 2)).to(pred_joints.device)
 
-    det0 = torch.linalg.det(Rot)
+    det0 = torch.linalg.det(R)
     valid_idx = (abs(det0 + 1) > 1e-6).unsqueeze(-1).long()
     batch_id = torch.where(abs(det0 + 1) > 1e-6)[0]
-    mano_axisang[batch_id, 0] = rotation_matrix_to_angle_axis(Rot)[batch_id]
-    mano_pose[batch_id, 0] = Rot[batch_id]
+    mano_axisang[batch_id, 0] = rotation_matrix_to_angle_axis(R)[batch_id]
+    mano_pose[batch_id, 0] = R[batch_id]
 
     finger_list = [[0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 17, 18, 19, 20], [0, 13, 14, 15, 16], [0, 1, 2, 3, 4]]
     for group_idx, group in enumerate(finger_list):
@@ -48,7 +48,7 @@ def ik_solver_mano(mano_shape, pred_joints):
 
             vec_template = template_joints[:, group[joint_idx]] - template_joints[:, group[joint_idx - 1]]
 
-            R_pa = Rot.clone()
+            R_pa = R.clone()
             for i in range(joint_idx - 2):
                 R_pa = torch.matmul(R_pa, mano_pose[:, group_idx * 3 + i + 1])
 
