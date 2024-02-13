@@ -117,7 +117,7 @@ CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gs
 ```
 For DexYCB
 ```
-CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video/exp.yaml
+CUDA_VISIBLE_DEVICES=2 python test.py -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video/exp.yaml
 ```
 After the testing phase ends, you could evaluate the performance:
 For Obman
@@ -126,7 +126,7 @@ CUDA_VISIBLE_DEVICES=1 python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gs
 ```
 For DexYCB
 ```
-CUDA_VISIBLE_DEVICES=1 python eval.py --gpu 1 -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
+CUDA_VISIBLE_DEVICES=2 python eval.py -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
 ```
 
 ## Citation
