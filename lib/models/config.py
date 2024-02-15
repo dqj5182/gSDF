@@ -155,7 +155,7 @@ def update_config(cfg, args, mode='train'):
         cfg.freeze()
 
 sys.path.insert(0, osp.join(cfg.root_dir, 'common'))
-from utils.dir_utils import add_pypath
+from lib.utils.dir_utils import add_pypath
 add_pypath(osp.join(cfg.data_dir))
 add_pypath(osp.join(cfg.data_dir, cfg.trainset_3d))
 add_pypath(osp.join(cfg.data_dir, cfg.testset))

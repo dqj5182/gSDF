@@ -1,29 +1,16 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :model.py
-#@Date        :2022/04/09 16:48:16
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import torch
 import torch.nn as nn
-import numpy as np
-import time
-from torch.nn import functional as F
 from config import cfg
 from networks.backbones.resnet import ResNetBackbone
 from networks.necks.unet import UNet
 from networks.heads.sdf_head import SDFHead
-from networks.heads.mano_head import ManoHead
 from networks.heads.fc_head import FCHead
 from networks.heads.conv_head import ConvHead
-from mano.mano_preds import get_mano_preds
-from mano.manolayer import ManoLayer
-from mano.inverse_kinematics import ik_solver_mano
-from mano.rodrigues_layer import batch_rodrigues
-from mano.rot6d import compute_rotation_matrix_from_ortho6d
-from utils.pose_utils import soft_argmax, decode_volume, decode_volume_abs
-from utils.sdf_utils import kinematic_embedding, pixel_align
+from external.mano.inverse_kinematics import ik_solver_mano
+from external.mano.rodrigues_layer import batch_rodrigues
+from external.mano.rot6d import compute_rotation_matrix_from_ortho6d
+from lib.utils.pose_utils import soft_argmax, decode_volume, decode_volume_abs
+from lib.utils.sdf_utils import kinematic_embedding, pixel_align
 
 
 class pose_model(nn.Module):

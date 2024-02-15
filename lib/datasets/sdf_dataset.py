@@ -3,7 +3,7 @@ import torch
 import copy
 import random
 import numpy as np
-from utils.camera import PerspectiveCamera
+from lib.utils.camera import PerspectiveCamera
 from lib.datasets.base_dataset import BaseDataset
 from kornia.geometry.conversions import rotation_matrix_to_angle_axis, angle_axis_to_rotation_matrix
 

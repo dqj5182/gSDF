@@ -5,7 +5,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 from _init_paths import add_path
-from utils.dir_utils import export_pose_results
+from lib.utils.dir_utils import export_pose_results
 
 
 def parse_args():

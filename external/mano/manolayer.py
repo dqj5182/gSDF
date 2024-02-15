@@ -1,12 +1,11 @@
 import os
-
 import numpy as np
 import torch
 from torch.nn import Module
 
-from mano.webuser.smpl_handpca_wrapper_HAND_only import ready_arguments
-from mano import rodrigues_layer, rotproj, rot6d
-from mano.tensutils import th_posemap_axisang, th_with_zeros, th_pack, subtract_flat_id, make_list
+from external.mano.webuser.smpl_handpca_wrapper_HAND_only import ready_arguments
+from external.mano import rodrigues_layer, rotproj, rot6d
+from external.mano.tensutils import th_posemap_axisang, th_with_zeros, th_pack, subtract_flat_id, make_list
 
 
 class ManoLayer(Module):

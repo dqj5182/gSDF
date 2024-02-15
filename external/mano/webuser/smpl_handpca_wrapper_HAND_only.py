@@ -24,11 +24,10 @@ def ready_arguments(fname_or_dict, posekey4vposed='pose'):
     import pickle
     import chumpy as ch
     from chumpy.ch import MatVecMult
-    from mano.webuser.posemapper import posemap
+    from external.mano.webuser.posemapper import posemap
 
     if not isinstance(fname_or_dict, dict):
         dd = pickle.load(open(fname_or_dict, 'rb'), encoding='latin1')
-        # dd = pickle.load(open(fname_or_dict, 'rb'))
     else:
         dd = fname_or_dict
 

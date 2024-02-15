@@ -9,7 +9,7 @@ from torch.autograd import gradcheck
 import torch
 from torch.autograd import Variable
 
-from mano import argutils
+from external.mano import argutils
 
 
 def quat2mat(quat):

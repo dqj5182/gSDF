@@ -1,7 +1,6 @@
 import os
 import os.path as osp
 import math
-import time
 import glob
 import abc
 from loguru import logger
@@ -10,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim
-from utils.timer import Timer
+from lib.utils.timer import Timer
 from config import cfg
 from net import get_model
 from lib.datasets.sdf_dataset import SDFDataset

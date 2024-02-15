@@ -1,19 +1,12 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :inverse_kinematics.py
-#@Date        :2022/06/29 09:55:39
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import torch
 import numpy as np
-from mano.manolayer import ManoLayer
-from mano.rodrigues_layer import batch_rodrigues
+from external.mano.manolayer import ManoLayer
+from external.mano.rodrigues_layer import batch_rodrigues
 from kornia.geometry.conversions import rotation_matrix_to_angle_axis
 
 
 def ik_solver_mano(mano_shape, pred_joints):
-    mano_layer = ManoLayer(flat_hand_mean=True, side="right", mano_root='../common/mano/assets', use_pca=False, center_idx=0)
+    mano_layer = ManoLayer(flat_hand_mean=True, side="right", mano_root='../external/mano/assets', use_pca=False, center_idx=0)
     mano_layer = mano_layer.cuda()
     batch_size = pred_joints.shape[0]
 
