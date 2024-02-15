@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :obman.py
-#@Date        :2022/04/02 15:14:24
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import os
 import numpy as np
 import time
@@ -217,7 +210,3 @@ class obman:
         error_dict['obj_corner'] = obj_corner_err
 
         return error_dict
-        
-
-if __name__ == "__main__":
-    db = obman('test_6k')

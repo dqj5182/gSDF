@@ -43,7 +43,7 @@ def main():
     # argument parse and create log
     args = parse_args()
     task = args.cfg.split('/')[-3]
-    add_path(os.path.join('../playground', task))
+    add_path(os.path.join('../lib', task))
     from config import cfg, update_config
     update_config(cfg, args, mode='test')
     from base import Tester

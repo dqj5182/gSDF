@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :dexycb.py
-#@Date        :2022/07/05 18:51:49
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import os
 from turtle import color
 import numpy as np
@@ -357,6 +350,3 @@ class dexycb:
         error_dict['fscore_obj_5'] = fscore_obj_5
 
         return error_dict
-
-if __name__ == "__main__":
-    db = dexycb('train_s0_29k', video_mode=True)

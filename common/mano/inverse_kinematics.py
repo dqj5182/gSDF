@@ -33,7 +33,7 @@ def ik_solver_mano(mano_shape, pred_joints):
     V = V_T.transpose(1, 2)
     R = torch.matmul(V, U.transpose(1, 2)).to(pred_joints.device)
 
-    det0 = torch.linalg.det(R)
+    det0 = torch.linalg.det(R).to(pred_joints.device)
     valid_idx = (abs(det0 + 1) > 1e-6).unsqueeze(-1).long()
     batch_id = torch.where(abs(det0 + 1) > 1e-6)[0]
     mano_axisang[batch_id, 0] = rotation_matrix_to_angle_axis(R)[batch_id]

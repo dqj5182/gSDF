@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File :train.py
-#@Date :2022/05/03 16:40:33
-#@Author :zerui chen
-#@Contact :zerui.chen@inria.fr
-
-
 import os
 import sys
 import argparse
@@ -20,26 +12,6 @@ from loguru import logger
 import _init_paths
 from _init_paths import add_path, this_dir
 from utils.dir_utils import export_pose_results
-
-
-def sig_handler(signum, frame):
-    logger.warning("Signal handler called with signal " + str(signum))
-    prod_id = int(os.environ['SLURM_PROCID'])
-    logger.warning("Host: %s - Global rank: %i" % (socket.gethostname(), prod_id))
-    if prod_id == 0:
-        logger.warning("Requeuing job " + os.environ['SLURM_JOB_ID'])
-        os.system('scontrol requeue ' + os.environ['SLURM_JOB_ID'])
-    else:
-        logger.warning("Not the master process, no need to requeue.")
-    sys.exit(-1)
-
-
-def init_signal_handler():
-    """
-    Handle signals sent by SLURM for time limit.
-    """
-    signal.signal(signal.SIGUSR1, sig_handler)
-    logger.warning("Signal handler installed.")
 
 
 def parse_args():
@@ -104,8 +76,6 @@ def main():
     trainer._make_batch_generator()
     trainer._make_model()
 
-    if args.slurm:
-        init_signal_handler()
     # train
     for epoch in range(trainer.start_epoch, cfg.end_epoch):
         trainer.tot_timer.tic()
