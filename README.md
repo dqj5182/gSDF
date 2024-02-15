@@ -16,11 +16,11 @@ pip install -r requirements.txt
 ## Dataset
 1. ObMan dataset preparations. 
 - Download ObMan data from [the official website](https://www.di.ens.fr/willow/research/obman/data/requestaccess.php).
-- Set up a soft link from the download path to `${ROOT}/datasets/obman/data`.
+- Set up a soft link from the download path to `${ROOT}/data/obman/data`.
 - Download processed [SDF files](https://drive.google.com/drive/folders/1GjFJBJlbJxeYrExtcYEdhAaeH-wLZOIF) and [json files](https://drive.google.com/drive/folders/1DBzG9J0uLzCy4A6W6Uq6Aq4JNAHiiNJQ).
 - Run `${ROOT}/preprocess/cocoify_obman.py` to generate LMDB training files. The data organization looks like this: 
    ```
-   ${ROOT}/datasets/obman
+   ${ROOT}/data/obman
    └── splits
        obman_train.json
        obman_test.json
@@ -42,11 +42,11 @@ pip install -r requirements.txt
 
 2. DexYCB dataset preparations. 
 - Download DexYCB data from [the official webpage](https://dex-ycb.github.io/).
-- Set up a soft link from the download path to `${ROOT}/datasets/dexycb/data`.
+- Set up a soft link from the download path to `${ROOT}/data/dexycb/data`.
 - Download processed [SDF files](https://drive.google.com/drive/folders/15yjzjYcqyOiIbX-6uaeYOezVH4stDTCG) and [json files](https://drive.google.com/drive/folders/1qULhMx1PrnXkihrPacIFzLOT5H2FZSj7).
 - Run `${ROOT}/preprocess/cocoify_dexycb.py` to generate LMDB training files. The data organization looks like this: 
    ```
-   ${ROOT}/datasets/obman
+   ${ROOT}/data/obman
    └── splits
        toolkit
        dexycb_train_s0.json
@@ -67,7 +67,7 @@ pip install -r requirements.txt
    ```
 
 ## Training
-1. Establish the output directory by `mkdir ${ROOT}/outputs` and `cd ${ROOT}/tools`.
+1. Establish the output directory by `mkdir ${ROOT}/outputs` and `cd ${ROOT}/main`.
 2. `${ROOT}/playground` provides implementations of different models:
    ```
    ${ROOT}/playground

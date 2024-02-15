@@ -20,7 +20,7 @@ from utils.sdf_utils import kinematic_embedding, pixel_align
 from utils.mesh import customized_export_ply
 from utils.solver import icp_ts
 from mano.manolayer import ManoLayer
-from datasets.dexycb.toolkit.dex_ycb import _SUBJECTS, _SERIALS
+from data.dexycb.toolkit.dex_ycb import _SUBJECTS, _SERIALS
 
 
 def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_results, obj_pose_results):

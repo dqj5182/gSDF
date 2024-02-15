@@ -17,9 +17,8 @@ import torchvision.transforms as transforms
 from utils.timer import Timer
 from config import cfg
 from net import get_model
-from datasets.sdf_dataset import SDFDataset
-from datasets.sdf_video_dataset import SDFVideoDataset
-from datasets.pose_dataset import PoseDataset
+from data.sdf_dataset import SDFDataset
+from data.pose_dataset import PoseDataset
 
 
 class Base(object):
@@ -103,39 +102,11 @@ class Trainer(Base):
     def _make_batch_generator(self):
         # data load and construct batch generator
         self.logger.info("Creating dataset...")
-        # dynamic dataset import
-        if '-' in cfg.trainset_3d:
-            # currently only support osdf_video task
-            train_datasets = cfg.trainset_3d.split('-')
-            train_datasets_splits = cfg.trainset_3d_split.split('-')
-            train_dataset_loaders = []
-            for idx, _ in enumerate(train_datasets):
-                exec(f'from datasets.{train_datasets[idx]}.{train_datasets[idx]} import {train_datasets[idx]}')
-                trainset3d_db = eval(train_datasets[idx])('train_' + train_datasets_splits[idx], video_mode=True, num_frames=cfg.num_frames)
-                train_dataset_loaders.append(OBJSDFVideoDataset(trainset3d_db, cfg=cfg))
-
-            self.trainset_loader = MultipleDatasets(train_dataset_loaders, make_same_len=True)
-            self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
-            # self.train_sampler = DistributedSampler(self.trainset_loader)
-            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
-        else:
-            exec(f'from datasets.{cfg.trainset_3d}.{cfg.trainset_3d} import {cfg.trainset_3d}')
-            if 'video' in cfg.task:
-                trainset3d_db = eval(cfg.trainset_3d)('train_' + cfg.trainset_3d_split, video_mode=True, num_frames=cfg.num_frames)
-            else:
-                trainset3d_db = eval(cfg.trainset_3d)('train_' + cfg.trainset_3d_split)
-
-            if cfg.task == 'hsdf_osdf_1net' or cfg.task == 'hsdf_osdf_2net' or cfg.task == 'hsdf_osdf_2net_pa':
-                self.trainset_loader = SDFDataset(trainset3d_db, cfg=cfg)
-            elif cfg.task == 'hsdf_osdf_2net_video_pa':
-                self.trainset_loader = SDFVideoDataset(trainset3d_db, cfg=cfg)
-            elif cfg.task == 'pose_kpt':
-                self.trainset_loader = PoseDataset(trainset3d_db, cfg=cfg)
-
-            self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
-            # self.train_sampler = DistributedSampler(self.trainset_loader)
-            # self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, sampler=self.train_sampler, drop_last=True, persistent_workers=False)
-            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
+        exec(f'from data.{cfg.trainset_3d}.dataset import {cfg.trainset_3d}')
+        trainset3d_db = eval(cfg.trainset_3d)('train_' + cfg.trainset_3d_split)
+        self.trainset_loader = SDFDataset(trainset3d_db, cfg=cfg)
+        self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
+        self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
 
     def _make_model(self):
         # prepare network
@@ -143,38 +114,14 @@ class Trainer(Base):
         model = get_model(cfg, True)
         model = model.cuda()
         model = nn.DataParallel(model)
-        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         optimizer = self.get_optimizer(model)
-        # model = NativeDDP(model, device_ids=[local_rank], output_device=local_rank)
         model.train()
 
-        if (cfg.task == 'hsdf_osdf_2net' or cfg.task == 'hsdf_osdf_2net_pa') and os.path.exists(cfg.ckpt):
-            ckpt = torch.load(cfg.ckpt, map_location=torch.device('cpu'))['network']
-            ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
-            model.module.pose_model.load_state_dict(ckpt)
-            self.logger.info('Load checkpoint from {}'.format(cfg.ckpt))
-            model.module.pose_model.eval()
-        elif cfg.task == 'hsdf_osdf_2net_video_pa' and os.path.exists(cfg.ckpt):
-            ckpt = torch.load(cfg.ckpt, map_location=torch.device('cpu'))['network']
-            ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
-            components = ['pose_model', 'backbone', 'neck', 'volume_head', 'hand_sdf_head', 'obj_sdf_head', 'backbone_2_sdf', 'sdf_encoder']
-            components_ckpts = [{} for i in range(len(components))]
-            for k, v in ckpt.items():
-                for i in range(len(components)):
-                    if k.split('.')[0] == components[i]:
-                        new_key = '.'.join(k.split('.')[1:])
-                        components_ckpts[i][new_key] = v
-                
-            model.module.pose_model.load_state_dict(components_ckpts[0])
-            model.module.backbone.load_state_dict(components_ckpts[1])
-            model.module.neck.load_state_dict(components_ckpts[2])
-            model.module.volume_head.load_state_dict(components_ckpts[3])
-            model.module.hand_sdf_head.load_state_dict(components_ckpts[4])
-            model.module.obj_sdf_head.load_state_dict(components_ckpts[5])
-            model.module.backbone_2_sdf.load_state_dict(components_ckpts[6])
-            model.module.sdf_encoder.load_state_dict(components_ckpts[7])
-            self.logger.info('Load checkpoint from {}'.format(cfg.ckpt))
-            model.module.pose_model.eval()
+        ckpt = torch.load(cfg.ckpt, map_location=torch.device('cpu'))['network']
+        ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
+        model.module.pose_model.load_state_dict(ckpt)
+        self.logger.info('Load checkpoint from {}'.format(cfg.ckpt))
+        model.module.pose_model.eval()
 
         start_epoch, model, optimizer = self.load_model(model, optimizer)
         self.start_epoch = start_epoch
@@ -189,38 +136,10 @@ class Tester(Base):
         super(Tester, self).__init__(log_name = 'test_logs.txt')
 
     def _make_batch_generator(self):
-        # data load and construct batch generator
-        # start_points = []
-        # end_points = []
-        # if 'video' in cfg.task:
-        #     tot_test_samples = cfg.num_testset_videos
-        # else:
-        #     tot_test_samples = cfg.num_testset_samples
+        exec(f'from data.{cfg.testset}.{cfg.testset} import {cfg.testset}')
+        testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split)
 
-        # division = tot_test_samples // cfg.num_gpus
-        # for i in range(cfg.num_gpus):
-        #     start_point = i * division
-        #     if i != cfg.num_gpus - 1:
-        #         end_point = start_point + division
-        #     else:
-        #         end_point = tot_test_samples
-        #     start_points.append(start_point)
-        #     end_points.append(end_point)
-
-        # self.logger.info(f"Creating dataset from {start_points[self.local_rank]} to {end_points[self.local_rank]}")
-        exec(f'from datasets.{cfg.testset}.{cfg.testset} import {cfg.testset}')
-        if 'video' in cfg.task:
-            testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split, video_mode=True, num_frames=cfg.num_frames, use_whole_video_test=cfg.use_whole_video_test)
-        else:
-            testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split)
-
-        if cfg.task == 'hsdf_osdf_1net' or cfg.task == 'hsdf_osdf_2net' or cfg.task == 'hsdf_osdf_2net_pa':
-            self.testset_loader = SDFDataset(testset3d_db, cfg=cfg, mode='test')
-        elif cfg.task == 'hsdf_osdf_2net_video_pa':
-            self.testset_loader = SDFVideoDataset(testset3d_db, cfg=cfg, mode='test')
-        elif cfg.task == 'pose_kpt':
-            self.testset_loader = PoseDataset(testset3d_db, cfg=cfg, mode='test')
-
+        self.testset_loader = SDFDataset(testset3d_db, cfg=cfg, mode='test')
         self.itr_per_epoch = math.ceil(len(self.testset_loader) / cfg.num_gpus / cfg.test_batch_size)
         self.batch_generator = DataLoader(dataset=self.testset_loader, batch_size=cfg.test_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=False, persistent_workers=False)
     

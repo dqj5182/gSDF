@@ -43,20 +43,12 @@ def main():
     # argument parse and create log
     args = parse_args()
     task = args.cfg.split('/')[-3]
-    add_path(os.path.join('../lib', task))
+    add_path(os.path.join('../lib', 'models'))
     from config import cfg, update_config
     update_config(cfg, args, mode='test')
     from base import Tester
     if args.test_epoch == 0:
         args.test_epoch = cfg.end_epoch - 1
-
-    # local_rank = args.local_rank
-    # device = 'cuda:%d' % local_rank
-    # torch.cuda.set_device(local_rank)
-    # torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    # world_size = torch.distributed.get_world_size()
-    # rank = torch.distributed.get_rank()
-    # logger.info('Distributed Process %d, Total %d.' % (args.local_rank, world_size))
 
     tester = Tester(args.test_epoch)
     tester._make_batch_generator()
@@ -80,19 +72,13 @@ def main():
                         metas[k] = metas[k].cuda(non_blocking=True)
 
             # forward
-            if cfg.task in ['hsdf_osdf_1net', 'hsdf_osdf_2net', 'hsdf_osdf_2net_pa', 'hsdf_osdf_2net_video_pa']:
-                sdf_feat, hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
-                export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
-                export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
-                from recon import reconstruct
-                if cfg.task == 'hsdf_osdf_2net_pa' or cfg.task == 'hsdf_osdf_2net_video_pa':
-                    reconstruct(cfg, metas['id'], tester.model, sdf_feat, inputs, metas, hand_pose_results, obj_pose_results)
-                else:
-                    reconstruct(cfg, metas['id'], tester.model.module.hand_sdf_head, tester.model.module.obj_sdf_head, sdf_feat, metas, hand_pose_results, obj_pose_results)
-            elif cfg.task == 'pose_kpt':
-                hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
-                export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
-                export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
+            sdf_feat, hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
+
+            # save
+            from recon import reconstruct
+            export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
+            export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
+            reconstruct(cfg, metas['id'], tester.model, sdf_feat, inputs, metas, hand_pose_results, obj_pose_results)
 
 
 if __name__ == "__main__":

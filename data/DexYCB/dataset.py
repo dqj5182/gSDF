@@ -1,19 +1,14 @@
 import os
 from turtle import color
 import numpy as np
-import time
-import pickle
 import json
 import trimesh
-import torch
-from tqdm import tqdm
-from loguru import logger
 from pycocotools.coco import COCO
 from scipy.spatial import cKDTree as KDTree
-from datasets.dexycb.toolkit.dex_ycb import _SUBJECTS, _SERIALS, _YCB_CLASSES 
+from data.DexYCB.toolkit.dex_ycb import _SUBJECTS, _SERIALS, _YCB_CLASSES 
 
 
-class dexycb:
+class DexYCB:
     def __init__(self, data_split, start_point=None, end_point=None, video_mode=False, num_frames=3, use_whole_video_test=False):
         self.name = 'dexycb'
         self.data_split = data_split

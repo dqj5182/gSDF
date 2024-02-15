@@ -10,7 +10,7 @@ from pycocotools.coco import COCO
 from scipy.spatial import cKDTree as KDTree
 
 
-class obman:
+class ObMan:
     def __init__(self, data_split, start_point=None, end_point=None, video_mode=False, num_frames=3):
         self.name = 'obman'
         self.data_split = data_split

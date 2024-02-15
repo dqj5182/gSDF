@@ -44,17 +44,17 @@ def main():
         testset = 'obman'
     elif 'dexycb' in args.dir:
         testset =  'dexycb'
-    exec(f'from datasets.{testset}.{testset} import {testset}')
+    exec(f'from data.{testset}.{testset} import {testset}')
     if testset == 'obman':
-        data_root = '../datasets/obman/data/'
-        rgb_source = '../datasets/obman/data/test/rgb/'
-        mesh_hand_source = '../datasets/obman/data/test/mesh_hand/'
-        mesh_obj_source = '../datasets/obman/data/test/mesh_obj/'
+        data_root = '../data/obman/data/'
+        rgb_source = '../data/obman/data/test/rgb/'
+        mesh_hand_source = '../data/obman/data/test/mesh_hand/'
+        mesh_obj_source = '../data/obman/data/test/mesh_obj/'
     elif testset == 'dexycb':
-        data_root = '../datasets/dexycb/data/'
-        from datasets.dexycb.toolkit.dex_ycb import _SUBJECTS
-        mesh_hand_source = '../datasets/dexycb/data/mesh_data/mesh_hand/'
-        mesh_obj_source = '../datasets/dexycb/data/mesh_data/mesh_obj/'
+        data_root = '../data/dexycb/data/'
+        from data.dexycb.toolkit.dex_ycb import _SUBJECTS
+        mesh_hand_source = '../data/dexycb/data/mesh_data/mesh_hand/'
+        mesh_obj_source = '../data/dexycb/data/mesh_data/mesh_obj/'
 
     with open(os.path.join(args.dir, 'exp.yaml'), 'r') as f:
         cfg = yaml.safe_load(f)

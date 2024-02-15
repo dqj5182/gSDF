@@ -30,22 +30,22 @@ if __name__ == "__main__":
         testset = 'obman'
     if 'dexycb' in args.dir:
         testset = 'dexycb'
-    exec(f'from datasets.{testset}.{testset} import {testset}')
+    exec(f'from data.{testset}.{testset} import {testset}')
 
     with open(os.path.join(args.dir, '../exp.yaml'), 'r') as f:
         cfg = yaml.safe_load(f)
 
     if testset == 'obman':
-        data_root = '../datasets/obman/data/'
-        data_json = '../datasets/obman/obman_test.json'
-        gt_mesh_hand_source = '../datasets/obman/data/test/mesh_hand/'
-        gt_mesh_obj_source = '../datasets/obman/data/test/mesh_obj/'
+        data_root = '../data/obman/data/'
+        data_json = '../data/obman/obman_test.json'
+        gt_mesh_hand_source = '../data/obman/data/test/mesh_hand/'
+        gt_mesh_obj_source = '../data/obman/data/test/mesh_obj/'
     elif testset == 'dexycb':
-        data_root = '../datasets/dexycb/data/'
-        data_json = '../datasets/dexycb/dexycb_test_s0.json'
-        from datasets.dexycb.toolkit.dex_ycb import _SUBJECTS
-        gt_mesh_hand_source = '../datasets/dexycb/data/mesh_data/mesh_hand/'
-        gt_mesh_obj_source = '../datasets/dexycb/data/mesh_data/mesh_obj/'
+        data_root = '../data/dexycb/data/'
+        data_json = '../data/dexycb/dexycb_test_s0.json'
+        from data.dexycb.toolkit.dex_ycb import _SUBJECTS
+        gt_mesh_hand_source = '../data/dexycb/data/mesh_data/mesh_hand/'
+        gt_mesh_obj_source = '../data/dexycb/data/mesh_data/mesh_obj/'
 
     output_vis_dir = os.path.join(args.dir, 'vis')
     os.makedirs(output_vis_dir, exist_ok=True)

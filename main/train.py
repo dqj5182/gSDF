@@ -1,16 +1,10 @@
 import os
-import sys
 import argparse
 from tqdm import tqdm
-import socket
-import signal
-import subprocess
 import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
-from loguru import logger
-import _init_paths
-from _init_paths import add_path, this_dir
+from _init_paths import add_path
 from utils.dir_utils import export_pose_results
 
 
@@ -40,7 +34,6 @@ def main():
     add_path(os.path.join(os.path.dirname(os.path.abspath(args.cfg)), os.pardir))
     from config import cfg, update_config
     from base import Trainer, Tester
-    from utils.dist_utils import reduce_tensor
     update_config(cfg, args)
 
     cudnn.benchmark = True
@@ -88,10 +81,7 @@ def main():
 
             # forward
             trainer.optimizer.zero_grad()
-            if cfg.task in ['hsdf_osdf_1net', 'hsdf_osdf_2net', 'hsdf_osdf_2net_pa', 'hsdf_osdf_2net_video_pa']:
-                loss, sdf_results, hand_pose_results, obj_pose_results = trainer.model(inputs, targets, metas, 'train')
-            elif cfg.task == 'pose_kpt':
-                loss, hand_pose_results, obj_pose_results = trainer.model(inputs, targets, metas, 'train')
+            loss, sdf_results, hand_pose_results, obj_pose_results = trainer.model(inputs, targets, metas, 'train')
 
             # backward
             all_loss = sum(loss[k].mean() for k in loss)
