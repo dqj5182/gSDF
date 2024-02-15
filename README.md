@@ -1,9 +1,6 @@
 # gSDF: Geometry-Driven Signed Distance Functions for 3D Hand-Object Reconstruction (CVPR 2023)
 
-This repository is the official implementation of [gSDF: Geometry-Driven Signed Distance Functions for 3D Hand-Object Reconstruction](https://arxiv.org/abs/2304.11970). It also provides implementations for [Grasping Field](https://arxiv.org/abs/2008.04451) and [AlignSDF](https://arxiv.org/abs/2207.12909). 
-Project webpage: https://zerchen.github.io/projects/gsdf.html
-
-Abstract: Signed distance functions (SDFs) is an attractive framework that has recently shown promising results for 3D shape reconstruction from images. SDFs seamlessly generalize to different shape resolutions and topologies but lack explicit modelling of the underlying 3D geometry. In this work, we exploit the hand structure and use it as guidance for SDF-based shape reconstruction. In particular, we address reconstruction of hands and manipulated objects from monocular RGB images. To this end, we estimate poses of hands and objects and use them to guide 3D reconstruction. More specifically, we predict kinematic chains of pose transformations and align SDFs with highly-articulated hand poses. We improve the visual features of 3D points with geometry alignment and further leverage temporal information to enhance the robustness to occlusion and motion blurs. We conduct extensive experiments on the challenging ObMan and DexYCB benchmarks and demonstrate significant improvements of the proposed method over the state of the art.
+This repository is the official implementation of [gSDF: Geometry-Driven Signed Distance Functions for 3D Hand-Object Reconstruction](https://arxiv.org/abs/2304.11970).
 
 ## Installation
 Please follow instructions listed below to build the environment.
@@ -68,45 +65,17 @@ pip install -r requirements.txt
 
 ## Training
 1. Establish the output directory by `mkdir ${ROOT}/outputs` and `cd ${ROOT}/main`.
-2. `${ROOT}/playground` provides implementations of different models:
-   ```
-   ${ROOT}/playground
-    ├── pose_kpt                  # A component for gSDF which solves pose estimation problem
-    ├── hsdf_osdf_1net            # The SDF network with a single backbone like Grasping Field or AlignSDF
-    ├── hsdf_osdf_2net            # The SDF network with two backbones like gSDF
-    ├── hsdf_osdf_2net_pa         # Compared with hsdf_osdf_2net, it additionally uses pixel-aligned visual features
-    ├── hsdf_osdf_2net_video_pa   # Compared with hsdf_osdf_2net_pa, it additionally uses spatial-temporay transformer to process multiple frames
-   ```
 
-2. Train the Grasping Field model:
-```
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hnerf3_onerf3.yaml
-```
-4. Train the AlignSDF model:
-```
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_1net/experiments/obman_resnet18_hkine6_otrans6.yaml
-```
-5. Train the gSDF model:
+2. Train the gSDF model:
 
 For Obman
 ```
-# It first needs to train a checkpoint for hand pose estimation.
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/obman_hand.yaml
-
-# Then, load the pretrained pose checkpoint and train the SDF model.
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/obman_presnet18_sresnet18_hkine6_okine6.yaml
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../asset/yaml/obman.yaml  hand_point_latent 51 obj_point_latent 72 ckpt ../outputs/pose_kpt/obman138k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump
 ```
 
 For DexYCB
 ```
-# It first needs to train a checkpoint for hand pose estimation.
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/pose_kpt/experiments/dexycb_s0_hand.yaml
-
-# Then, load the pretrained pose checkpoint and train the SDF model.
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_pa/experiments/dexycbs0_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt ../outputs/pose_kpt/dexycbs0_29k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump/snapshot_99.pth.tar
-
-# Train the model that processes multiple frames (DexYCB provides videos).
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../playground/hsdf_osdf_2net_video_pa/experiments/dexycbs0_3frames_presnet18_sresnet18_hkine6_okine6.yaml hand_point_latent 51 obj_point_latent 72 ckpt path_to_pretrained_model
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../asset/yaml/dexycb.yaml hand_point_latent 51 obj_point_latent 72 ckpt ../outputs/pose_kpt/dexycbs0_29k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump/snapshot_99.pth.tar
 ```
 
 ## Testing and Evaluation
@@ -128,18 +97,3 @@ For DexYCB
 ```
 CUDA_VISIBLE_DEVICES=2 python eval.py -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
 ```
-
-## Citation
-If you find this work useful, please consider citing:
-```
-@InProceedings{chen2023gsdf,
-author       = {Chen, Zerui and Chen, Shizhe and Schmid, Cordelia and Laptev, Ivan},
-title        = {{gSDF}: {Geometry-Driven} Signed Distance Functions for {3D} Hand-Object Reconstruction},
-booktitle    = {CVPR},
-year         = {2023},
-}
-```
-
-## Acknowledgement
-Some of the codes are built upon [manopth](https://github.com/hassony2/manopth), [PoseNet](https://github.com/mks0601/3DMPPE_POSENET_RELEASE), [PCL](https://github.com/yu-frank/PerspectiveCropLayers), [Grasping Field](https://github.com/korrawe/grasping_field), and [HALO](https://github.com/korrawe/halo).
-Thanks them for their great works!
