@@ -12,14 +12,13 @@ from loguru import logger
 import _init_paths
 from _init_paths import add_path, this_dir
 from utils.dir_utils import export_pose_results
+from recon import reconstruct
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--slurm", dest="slurm", action='store_true')
     parser.add_argument('--cfg', '-e', required=True, type=str)
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
-    # parser.add_argument('--local_rank', default=0, type=int)
     parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
@@ -46,30 +45,6 @@ def main():
     update_config(cfg, args)
 
     cudnn.benchmark = True
-    # if args.slurm:
-    #     world_size = int(os.environ['SLURM_NTASKS'])
-    #     local_rank = int(os.environ['SLURM_LOCALID'])
-    #     global_rank = int(os.environ['SLURM_PROCID'])
-    #     hostnames = subprocess.check_output(['scontrol', 'show', 'hostnames', os.environ['SLURM_JOB_NODELIST']])
-    #     master_addr = hostnames.split()[0].decode('utf-8')
-    #     os.environ['MASTER_ADDR'] = master_addr
-    #     os.environ['MASTER_PORT'] = str(29500)
-    #     os.environ['WORLD_SIZE'] = str(world_size)
-    #     os.environ['RANK'] = str(global_rank)
-    #     logger.info('Distributed Process %d, Total %d.' % (local_rank, world_size))
-    #     torch.cuda.set_device(local_rank)
-    #     torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    # else:
-    #     pass
-        # local_rank = args.local_rank
-        # device = 'cuda:%d' % local_rank
-        # torch.cuda.set_device(local_rank)
-        # torch.distributed.init_process_group(backend='nccl', init_method='env://')
-        # world_size = torch.distributed.get_world_size()
-        # rank = torch.distributed.get_rank()
-        # logger.info('Distributed Process %d, Total %d.' % (args.local_rank, world_size))
-
-    # if local_rank == 0:
     writer_dict = {'writer': SummaryWriter(log_dir = cfg.log_dir), 'train_global_steps': 0}
 
     trainer = Trainer()
@@ -80,13 +55,13 @@ def main():
     for epoch in range(trainer.start_epoch, cfg.end_epoch):
         trainer.tot_timer.tic()
         trainer.read_timer.tic()
-        # trainer.train_sampler.set_epoch(epoch)
 
         for itr, (inputs, targets, metas) in enumerate(trainer.batch_generator):
             trainer.set_lr(epoch, itr)
             trainer.read_timer.toc()
             trainer.gpu_timer.tic()
 
+            # inputs
             for k, v in inputs.items():
                 if isinstance(v, list):
                     for i in range(len(v)):
@@ -94,6 +69,7 @@ def main():
                 else:
                     inputs[k] = inputs[k].cuda(non_blocking=True)
 
+            # targets
             for k, v in targets.items():
                 if isinstance(v, list):
                     for i in range(len(v)):
@@ -101,6 +77,7 @@ def main():
                 else:
                     targets[k] = targets[k].cuda(non_blocking=True)
 
+            # meta infos
             metas['epoch'] = epoch
             for k, v in metas.items():
                 if k != 'id' and k != 'epoch' and k != 'obj_id':
@@ -132,12 +109,12 @@ def main():
                 '%.2fs/epoch' % (trainer.tot_timer.average_time * trainer.itr_per_epoch),
                 ]
 
+            # save
             record_dict = {}
             for k, v in loss.items():
                 record_dict[k] = v.detach().mean() * 1000.
             screen += ['%s: %.3f' % ('loss_' + k, v) for k, v in record_dict.items()]
 
-            # # if local_rank == 0:
             tb_writer = writer_dict['writer']
             global_steps = writer_dict['train_global_steps']
             if itr % 10 == 0:
@@ -159,6 +136,7 @@ def main():
             }, epoch)
             writer_dict['writer'].close()
         
+    # test
     torch.cuda.empty_cache()
     tester = Tester(cfg.end_epoch - 1)
     tester._make_batch_generator()
@@ -166,6 +144,7 @@ def main():
 
     with torch.no_grad():
         for itr, (inputs, metas) in tqdm(enumerate(tester.batch_generator)):
+            # inputs
             for k, v in inputs.items():
                 if isinstance(v, list):
                     for i in range(len(v)):
@@ -173,6 +152,7 @@ def main():
                 else:
                     inputs[k] = inputs[k].cuda(non_blocking=True)
 
+            # meta infos
             for k, v in metas.items():
                 if k != 'id' and k != 'obj_id':
                     if isinstance(v, list):
@@ -182,19 +162,12 @@ def main():
                         metas[k] = metas[k].cuda(non_blocking=True)
 
             # forward
-            if cfg.task in ['hsdf_osdf_1net', 'hsdf_osdf_2net', 'hsdf_osdf_2net_pa', 'hsdf_osdf_2net_video_pa']:
-                sdf_feat, hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
-                export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
-                export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
-                from recon import reconstruct
-                if cfg.task == 'hsdf_osdf_2net_pa' or cfg.task == 'hsdf_osdf_2net_video_pa':
-                    reconstruct(cfg, metas['id'], tester.model, sdf_feat, inputs, metas, hand_pose_results, obj_pose_results)
-                else:
-                    reconstruct(cfg, metas['id'], tester.model.module.hand_sdf_head, tester.model.module.obj_sdf_head, sdf_feat, metas, hand_pose_results, obj_pose_results)
-            elif cfg.task == 'pose_kpt':
-                hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
-                export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
-                export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
+            sdf_feat, hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
+
+            # save
+            export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
+            export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
+            reconstruct(cfg, metas['id'], tester.model, sdf_feat, inputs, metas, hand_pose_results, obj_pose_results)
          
     
 if __name__ == "__main__":
