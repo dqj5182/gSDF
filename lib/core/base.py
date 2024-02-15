@@ -147,7 +147,6 @@ class Tester(Base):
         model = get_model(cfg, is_train=False)
         model = model.cuda()
         model = nn.DataParallel(model)
-        # model = NativeDDP(model, device_ids=[local_rank], output_device=local_rank)
         ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['network'])
         model.eval()
