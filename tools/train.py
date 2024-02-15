@@ -12,7 +12,6 @@ from loguru import logger
 import _init_paths
 from _init_paths import add_path, this_dir
 from utils.dir_utils import export_pose_results
-from recon import reconstruct
 
 
 def parse_args():
@@ -165,6 +164,7 @@ def main():
             sdf_feat, hand_pose_results, obj_pose_results = tester.model(inputs, targets=None, metas=metas, mode='test')
 
             # save
+            from recon import reconstruct
             export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
             export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
             reconstruct(cfg, metas['id'], tester.model, sdf_feat, inputs, metas, hand_pose_results, obj_pose_results)
