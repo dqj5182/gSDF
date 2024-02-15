@@ -1,22 +1,10 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :sdf_dataset.py
-#@Date        :2022/04/05 16:58:35
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import os
-import time
-import cv2
 import torch
-import lmdb
-import json
 import copy
 import random
 import numpy as np
-from torch.utils.data.dataset import Dataset
 from utils.camera import PerspectiveCamera
-from base_dataset import BaseDataset
+from lib.datasets.base_dataset import BaseDataset
 from kornia.geometry.conversions import rotation_matrix_to_angle_axis, angle_axis_to_rotation_matrix
 
 
@@ -26,17 +14,6 @@ class SDFDataset(BaseDataset):
         self.num_sample_points = cfg.num_sample_points
         self.recon_scale = cfg.recon_scale
         self.clamp = cfg.clamp_dist
-        
-        if self.use_lmdb and self.mode == 'train':
-            if self.hand_branch:
-                self.hand_env = lmdb.open(db.sdf_hand_source + '.lmdb', readonly=True, lock=False, readahead=False, meminit=False)
-                with open(os.path.join(db.sdf_hand_source + '.lmdb', 'meta_info.json'), 'r') as f:
-                   self.hand_meta = json.load(f)
-
-            if self.obj_branch:
-                self.obj_env = lmdb.open(db.sdf_obj_source + '.lmdb', readonly=True, lock=False, readahead=False, meminit=False)
-                with open(os.path.join(db.sdf_obj_source + '.lmdb', 'meta_info.json'), 'r') as f:
-                   self.obj_meta = json.load(f)
 
     def __getitem__(self, index):
         sample_data = copy.deepcopy(self.db[index])
@@ -87,10 +64,7 @@ class SDFDataset(BaseDataset):
             sdf_scale = torch.from_numpy(sample_data['sdf_scale'])
             sdf_offset = torch.from_numpy(sample_data['sdf_offset'])
 
-        if self.use_lmdb and self.mode == 'train':
-            img = self.load_img_lmdb(self.img_env, sample_key, (3, self.input_image_size[0], self.input_image_size[1]))
-        else:
-            img = self.load_img(img_path)
+        img = self.load_img(img_path)
         
         camera = PerspectiveCamera(sample_data['fx'], sample_data['fy'], sample_data['cx'], sample_data['cy'])
 
@@ -100,12 +74,9 @@ class SDFDataset(BaseDataset):
         else:
             trans, scale, rot, do_flip, color_scale = [0, 0], 1, 0, False, [1.0, 1.0, 1.0]
 
-        if self.use_lmdb and self.mode == 'train':
-            img, _ = self.generate_patch_image(img, [0, 0, self.input_image_size[1], self.input_image_size[0]], self.input_image_size, do_flip, scale, rot)
-        else:
-            bbox[0] = bbox[0] + bbox[2] * trans[0]
-            bbox[1] = bbox[1] + bbox[3] * trans[1]
-            img, _ = self.generate_patch_image(img, bbox, self.input_image_size, do_flip, scale, rot)
+        bbox[0] = bbox[0] + bbox[2] * trans[0]
+        bbox[1] = bbox[1] + bbox[3] * trans[1]
+        img, _ = self.generate_patch_image(img, bbox, self.input_image_size, do_flip, scale, rot)
 
         for i in range(3):
             img[:, :, i] = np.clip(img[:, :, i] * color_scale[i], 0, 255)
@@ -119,12 +90,8 @@ class SDFDataset(BaseDataset):
         if self.mode == 'train' and self.use_inria_aug and random.random() < 0.5:
             random_idx = np.random.randint(low=1, high=1492, size=1, dtype='l')
             inria_key = str(random_idx[0]).rjust(4, '0')
-            if self.use_lmdb:
-                seg = self.load_seg_lmdb(self.seg_env, sample_key, (3, self.input_image_size[0], self.input_image_size[1]))
-                bg = self.load_img_lmdb(self.inria_env, inria_key, (3, self.input_image_size[0], self.input_image_size[1]))
-            else:
-                seg = self.load_seg(seg_path, sample_data['ycb_id'])
-                bg = self.load_img(os.path.join(self.inria_aug_source, inria_key + '.jpg'))
+            seg = self.load_seg(seg_path, sample_data['ycb_id'])
+            bg = self.load_img(os.path.join(self.inria_aug_source, inria_key + '.jpg'))
             
             seg, _ = self.generate_patch_image(seg, bbox, self.input_image_size, do_flip, 1.0, rot)
             seg = np.sum(seg, axis=-1, keepdims=True) > 0
@@ -143,10 +110,7 @@ class SDFDataset(BaseDataset):
         
             # get points to train sdf
             if self.hand_branch:
-                if self.use_lmdb:
-                    hand_samples, hand_labels = self.unpack_sdf_lmdb(self.hand_env, sample_key, self.hand_meta, num_sample_points, hand=True, clamp=self.clamp, filter_dist=True)
-                else:
-                    hand_samples, hand_labels = self.unpack_sdf(sdf_hand_path, num_sample_points, hand=True, clamp=self.clamp, filter_dist=True)
+                hand_samples, hand_labels = self.unpack_sdf(sdf_hand_path, num_sample_points, hand=True, clamp=self.clamp, filter_dist=True)
                 hand_samples[:, 0:3] = hand_samples[:, 0:3] / sdf_scale - sdf_offset
                 hand_labels = hand_labels.long()
                 if 'ho3d' in self.dataset_name:
@@ -156,10 +120,7 @@ class SDFDataset(BaseDataset):
                 hand_labels = -1. * torch.ones(num_sample_points, dtype=torch.int32)
 
             if self.obj_branch:
-                if self.use_lmdb:
-                    obj_samples, obj_labels = self.unpack_sdf_lmdb(self.obj_env, sample_key, self.obj_meta, num_sample_points, hand=False, clamp=self.clamp, filter_dist=True)
-                else:
-                    obj_samples, obj_labels = self.unpack_sdf(sdf_obj_path, num_sample_points, hand=False, clamp=self.clamp, filter_dist=True)
+                obj_samples, obj_labels = self.unpack_sdf(sdf_obj_path, num_sample_points, hand=False, clamp=self.clamp, filter_dist=True)
                 obj_samples[:, 0:3] = obj_samples[:, 0:3] / sdf_scale - sdf_offset
                 obj_lablels = obj_labels.long()
                 if 'ho3d' in self.dataset_name:
@@ -206,68 +167,6 @@ class SDFDataset(BaseDataset):
             meta_iter = dict(cam_intr=cam_intr, cam_extr=cam_extr, id=sample_key, hand_center_3d=hand_center_3d, hand_poses=hand_poses, hand_shapes=hand_shapes, obj_rest_corners_3d=obj_rest_corners_3d, obj_transform=obj_transform)
 
             return input_iter, meta_iter
-
-        
-    def unpack_sdf_lmdb(self, env, key, meta, subsample=None, hand=True, clamp=None, filter_dist=False):
-        """
-        @description: unpack sdf samples stored in the lmdb dataset.
-        ---------
-        @param: lmdb env, sample key, lmdb meta, num points, whether is hand, clamp dist, whether filter
-        -------
-        @Returns: points with sdf, part labels (only meaningful for hands)
-        -------
-        """
-
-        def filter_invalid_sdf_lmdb(tensor, dist):
-            keep = (torch.abs(tensor[:, 3]) < abs(dist)) & (torch.abs(tensor[:, 4]) < abs(dist))
-            return tensor[keep, :]
-
-        def remove_nans(tensor):
-            tensor_nan = torch.isnan(tensor[:, 3])
-            return tensor[~tensor_nan, :]
-
-        with env.begin(write=False) as txn:
-            buf = txn.get(key.encode('ascii'))
-
-        index = meta['keys'].index(key)
-        npz = np.array(np.frombuffer(buf, dtype=np.float32))
-        pos_num = meta['pos_num'][index]
-        neg_num = meta['neg_num'][index]
-        feat_dim = meta['dim']
-        total_num  = pos_num + neg_num
-        npz = npz.reshape((-1, feat_dim))[:total_num, :]
-
-        try:
-            pos_tensor = remove_nans(torch.from_numpy(npz[:pos_num, :]))
-            neg_tensor = remove_nans(torch.from_numpy(npz[pos_num:, :]))
-        except Exception as e:
-            print("fail to load {}, {}".format(key, e))
-
-        # split the sample into half
-        half = int(subsample / 2)
-
-        if filter_dist:
-            pos_tensor = filter_invalid_sdf_lmdb(pos_tensor, 2.0)
-            neg_tensor = filter_invalid_sdf_lmdb(neg_tensor, 2.0)
-
-        random_pos = (torch.rand(half) * pos_tensor.shape[0]).long()
-        random_neg = (torch.rand(half) * neg_tensor.shape[0]).long()
-
-        sample_pos = torch.index_select(pos_tensor, 0, random_pos)
-        sample_neg = torch.index_select(neg_tensor, 0, random_neg)
-
-        samples_and_labels = torch.cat([sample_pos, sample_neg], 0)
-        samples = samples_and_labels[:, :-1]
-        labels = samples_and_labels[:, -1]
-
-        if clamp:
-            labels[samples[:, 3] < -clamp] = -1
-            labels[samples[:, 3] > clamp] = -1
-
-        if not hand:
-            labels[:] = -1
-
-        return samples, labels
 
     def unpack_sdf(self, data_path, subsample=None, hand=True, clamp=None, filter_dist=False):
         """

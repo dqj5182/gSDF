@@ -1,16 +1,4 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :base_dataset.py
-#@Date        :2022/04/05 16:58:51
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
-import os
-import time
 import cv2
-import torch
-import lmdb
-import copy
 import random
 import numpy as np
 from torchvision import transforms
@@ -25,7 +13,6 @@ class BaseDataset(Dataset):
         self.joints_name = db.joints_name
         self.inria_aug_source = db.inria_aug_source
 
-        self.use_lmdb = cfg.use_lmdb
         self.hand_branch = cfg.hand_branch
         self.obj_branch = cfg.obj_branch
         self.original_image_size = db.image_size
@@ -35,41 +22,12 @@ class BaseDataset(Dataset):
             transforms.ToPILImage(),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-
-        if self.use_lmdb and self.mode == 'train':
-            self.img_source = db.img_source + '.lmdb'
-            self.img_env = lmdb.open(self.img_source, readonly=True, lock=False, readahead=False, meminit=False)
-
-        if self.use_lmdb and self.use_inria_aug and self.mode == 'train':
-            self.seg_env = lmdb.open(db.seg_source + '.lmdb', readonly=True, lock=False, readahead=False, meminit=False)
-            self.inria_env = lmdb.open(db.inria_aug_source + '.lmdb', readonly=True, lock=False, readahead=False, meminit=False)
     
     def __len__(self):
         return len(self.db)
     
     def __getitem__(self, index):
         pass
-    
-    def load_img_lmdb(self, env, key, size, order='RGB'):
-        """
-        @description: load images from lmdb datasets.
-        ---------
-        @param: image lmdb env, data_key, image_size, channel order
-        -------
-        @Returns: image tensor in RGB order (default)
-        -------
-        """
-
-        with env.begin(write=False) as txn:
-            buf = txn.get(key.encode('ascii'))
-        img_flat = np.frombuffer(buf, dtype=np.uint8)
-        C, H, W = size
-        img = img_flat.reshape(H, W, C)
-
-        if order=='RGB':
-            img = img[:,:,::-1].copy()
-
-        return img
     
     def load_img(self, path, order='RGB'):
         """
@@ -90,24 +48,6 @@ class BaseDataset(Dataset):
 
         img = img.astype(np.uint8)
         return img
-
-    def load_seg_lmdb(self, env, key, size, ycb_id):
-        with env.begin(write=False) as txn:
-            buf = txn.get(key.encode('ascii'))
-        img_flat = np.frombuffer(buf, dtype=np.uint8)
-        C, H, W = size
-        img = img_flat.reshape(H, W, C)
-
-        seg_maps = np.zeros((img.shape[0], img.shape[1], 2), dtype=np.float32)
-        if self.dataset_name == 'obman':
-            seg_maps[:, :, 0][np.where(img[:, :, 0] == 100)] = 1
-            seg_maps[:, :, 1][np.where(img[:, :, 0] == 22)] = 1
-            seg_maps[:, :, 1][np.where(img[:, :, 0] == 24)] = 1
-        elif self.dataset_name == 'dexycb':
-            seg_maps[:, :, 0][np.where(img[:, :, 0] == ycb_id)] = 1
-            seg_maps[:, :, 1][np.where(img[:, :, 0] == 255)] = 1
-
-        return seg_maps
 
     def load_seg(self, path, ycb_id):
         if self.dataset_name == 'obman':

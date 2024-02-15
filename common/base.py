@@ -8,17 +8,12 @@ from loguru import logger
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.distributed import DistributedSampler
 import torch.nn as nn
-from torch.nn.parallel import DataParallel
-# from torch.nn.parallel import DistributedDataParallel as NativeDDP
 import torch.optim
-import torchvision.transforms as transforms
 from utils.timer import Timer
 from config import cfg
 from net import get_model
-from data.sdf_dataset import SDFDataset
-from data.pose_dataset import PoseDataset
+from lib.datasets.sdf_dataset import SDFDataset
 
 
 class Base(object):

@@ -1,13 +1,6 @@
-import os
-import time
-import cv2
 import torch
-import lmdb
-import json
 import copy
-import random
 import numpy as np
-from torch.utils.data.dataset import Dataset
 from base_dataset import BaseDataset
 from utils.camera import PerspectiveCamera
 from kornia.geometry.conversions import rotation_matrix_to_angle_axis, angle_axis_to_rotation_matrix
@@ -62,10 +55,7 @@ class PoseDataset(BaseDataset):
         except:
             obj_transform = torch.zeros((4, 4))
 
-        if self.use_lmdb and self.mode == 'train':
-            img = self.load_img_lmdb(self.img_env, sample_key, (3, self.input_image_size[0], self.input_image_size[1]))
-        else:
-            img = self.load_img(img_path)
+        img = self.load_img(img_path)
 
         camera = PerspectiveCamera(sample_data['fx'], sample_data['fy'], sample_data['cx'], sample_data['cy'])
 
@@ -75,12 +65,9 @@ class PoseDataset(BaseDataset):
         else:
             trans, scale, rot, do_flip, color_scale = [0, 0], 1, 0, False, [1.0, 1.0, 1.0]
 
-        if self.use_lmdb and self.mode == 'train':
-            img, _ = self.generate_patch_image(img, [0, 0, self.input_image_size[1], self.input_image_size[0]], self.input_image_size, do_flip, scale, rot)
-        else:
-            bbox[0] = bbox[0] + bbox[2] * trans[0]
-            bbox[1] = bbox[1] + bbox[3] * trans[1]
-            img, _ = self.generate_patch_image(img, bbox, self.input_image_size, do_flip, scale, rot)
+        bbox[0] = bbox[0] + bbox[2] * trans[0]
+        bbox[1] = bbox[1] + bbox[3] * trans[1]
+        img, _ = self.generate_patch_image(img, bbox, self.input_image_size, do_flip, scale, rot)
         
         for i in range(3):
             img[:, :, i] = np.clip(img[:, :, i] * color_scale[i], 0, 255)

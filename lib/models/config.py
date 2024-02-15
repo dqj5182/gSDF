@@ -97,7 +97,6 @@ cfg.test_batch_size = 1
 cfg.test_with_gt = False
 
 ## others
-cfg.use_lmdb = False
 cfg.num_threads = 6
 cfg.gpu_ids = (0, 1, 2, 3)
 cfg.num_gpus = 4
