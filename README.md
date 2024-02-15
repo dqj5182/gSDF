@@ -1,6 +1,6 @@
 # gSDF: Geometry-Driven Signed Distance Functions for 3D Hand-Object Reconstruction (CVPR 2023)
 
-This repository is the official implementation of [gSDF: Geometry-Driven Signed Distance Functions for 3D Hand-Object Reconstruction](https://arxiv.org/abs/2304.11970).
+This repository is implementation of [gSDF](https://arxiv.org/abs/2304.11970).
 
 ## Installation
 Please follow instructions listed below to build the environment.

@@ -30,22 +30,11 @@ class BaseDataset(Dataset):
         pass
     
     def load_img(self, path, order='RGB'):
-        """
-        @description: load images directly from the disk
-        ---------
-        @param: image path, channel order
-        -------
-        @Returns: image tensor in RGB order (default)
-        -------
-        """
-
         img = cv2.imread(path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
         if not isinstance(img, np.ndarray):
             raise IOError("Fail to read %s" % path)
-
         if order=='RGB':
             img = img[:,:,::-1].copy()
-
         img = img.astype(np.uint8)
         return img
 
