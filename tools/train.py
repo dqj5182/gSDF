@@ -148,7 +148,7 @@ def main():
                 loss, hand_pose_results, obj_pose_results = trainer.model(inputs, targets, metas, 'train')
 
             # backward
-            all_loss = sum(loss[k] for k in loss)
+            all_loss = sum(loss[k].mean() for k in loss)
             all_loss.backward()
 
             trainer.optimizer.step()
@@ -164,7 +164,7 @@ def main():
 
             record_dict = {}
             for k, v in loss.items():
-                record_dict[k] = v.detach() * 1000.
+                record_dict[k] = v.detach().mean() * 1000.
             screen += ['%s: %.3f' % ('loss_' + k, v) for k, v in record_dict.items()]
 
             # # if local_rank == 0:
