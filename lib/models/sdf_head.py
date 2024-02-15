@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :sdf_head.py
-#@Date        :2022/04/09 16:57:10
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -256,11 +249,3 @@ class DeformableSDFHead(nn.Module):
             output = self.th(output)
 
         return output, None
-
-
-if __name__ == "__main__":
-    import sys
-    net = SDFHead(256, 6, [512, 512, 512, 512], [0, 1, 2, 3], 0.2, [0, 1, 2, 3], [2], True, 6)
-    input_size = (2, 262)
-    input_tensor = torch.randn(input_size)
-    latent, pred_class = net(input_tensor)

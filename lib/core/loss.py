@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :ordinal_loss.py
-#@Date        :2022/09/14 14:49:19
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

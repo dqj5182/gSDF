@@ -46,7 +46,7 @@ def main():
     add_path(os.path.join('../lib', 'models'))
     from config import cfg, update_config
     update_config(cfg, args, mode='test')
-    from base import Tester
+    from lib.core.base import Tester
     if args.test_epoch == 0:
         args.test_epoch = cfg.end_epoch - 1
 

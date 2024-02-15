@@ -33,7 +33,7 @@ def main():
     
     add_path(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib', 'models'))
     from config import cfg, update_config
-    from base import Trainer, Tester
+    from lib.core.base import Trainer, Tester
     update_config(cfg, args)
 
     cudnn.benchmark = True

@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 from config import cfg
-from networks.backbones.resnet import ResNetBackbone
-from networks.necks.unet import UNet
-from networks.heads.sdf_head import SDFHead
-from networks.heads.fc_head import FCHead
-from networks.heads.conv_head import ConvHead
+from lib.models.resnet import ResNetBackbone
+from lib.models.unet import UNet
+from lib.models.sdf_head import SDFHead
+from lib.models.module import FCHead
+from lib.models.module import ConvHead
 from external.mano.inverse_kinematics import ik_solver_mano
 from external.mano.rodrigues_layer import batch_rodrigues
 from external.mano.rot6d import compute_rotation_matrix_from_ortho6d
@@ -281,12 +281,3 @@ def get_model(cfg, is_train):
     ho_model = model(cfg, posenet, backbone_shape, neck_shape, volume_head_obj, rot_head_obj, hand_sdf_head, obj_sdf_head)
 
     return ho_model
-
-
-if __name__ == '__main__':
-    model = get_model(cfg, True)
-    input_size = (2, 3, 256, 256)
-    input_img = torch.randn(input_size)
-    input_point_size = (2, 2000, 3)
-    input_points = torch.randn(input_point_size)
-    sdf_results, hand_pose_results, obj_pose_results = model(input_img, input_points)

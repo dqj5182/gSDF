@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :mano_head.py
-#@Date        :2022/04/07 10:48:59
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -87,12 +80,3 @@ class ManoHead(nn.Module):
         results = {"verts": verts, "joints": joints, "shape": shape, "pcas": mano_pose, "pose": poses,  "global_trans":global_trans, "rot_center": rot_center, "scale_trans": scale_trans, "vis": valid_idx, "mean_pose": mean_pose}
 
         return results
-
-if __name__ == "__main__":
-    import sys
-    sys.path.insert(0, 'common')
-    from mano.manolayer import ManoLayer
-    net = ManoHead(depth=True)
-    input_size = (2, 512)
-    input_tensor = torch.randn(input_size)
-    results = net(input_tensor)
