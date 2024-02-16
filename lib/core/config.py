@@ -26,9 +26,9 @@ cfg.obj_pose_result_dir = '.'
 
 ## Dataset
 cfg.DATASET = edict()
-cfg.DATASET.trainset_3d = 'obman'
+cfg.DATASET.trainset_3d = 'ObMan'
 cfg.DATASET.trainset_3d_split = '87k'
-cfg.DATASET.testset = 'obman'
+cfg.DATASET.testset = 'ObMan'
 cfg.DATASET.testset_split = '6k'
 cfg.DATASET.testset_hand_source = osp.join(cfg.DATASET.testset, 'data/test/mesh_hand')
 cfg.DATASET.testset_obj_source = osp.join(cfg.DATASET.testset, 'data/test/mesh_obj')

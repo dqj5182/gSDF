@@ -70,12 +70,12 @@ pip install -r requirements.txt
 
 For Obman
 ```
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../asset/yaml/obman.yaml  hand_point_latent 51 obj_point_latent 72 ckpt ../outputs/pose_kpt/obman138k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 --cfg ../asset/yaml/obman_train.yaml
 ```
 
 For DexYCB
 ```
-CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 -e ../asset/yaml/dexycb.yaml hand_point_latent 51 obj_point_latent 72 ckpt ../outputs/pose_kpt/dexycbs0_29k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump/snapshot_99.pth.tar
+CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 --cfg ../asset/yaml/dexycb_train.yaml
 ```
 
 ## Testing and Evaluation
