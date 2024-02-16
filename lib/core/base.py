@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.optim
 from lib.utils.timer import Timer
 from config import cfg
-from net import get_model
+from model import get_model
 from lib.datasets.sdf_dataset import SDFDataset
 
 

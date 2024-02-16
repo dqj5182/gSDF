@@ -44,9 +44,9 @@ class pose_model(nn.Module):
         return hand_pose_results
 
 
-class model(nn.Module):
+class Model(nn.Module):
     def __init__(self, cfg, pose_model, backbone, neck, volume_head, rot_head, hand_sdf_head, obj_sdf_head):
-        super(model, self).__init__()
+        super(Model, self).__init__()
         self.cfg = cfg
         self.pose_model = pose_model
         self.backbone = backbone
@@ -278,6 +278,6 @@ def get_model(cfg, is_train):
     else:
         obj_sdf_head = None
     
-    ho_model = model(cfg, posenet, backbone_shape, neck_shape, volume_head_obj, rot_head_obj, hand_sdf_head, obj_sdf_head)
+    ho_model = Model(cfg, posenet, backbone_shape, neck_shape, volume_head_obj, rot_head_obj, hand_sdf_head, obj_sdf_head)
 
     return ho_model
