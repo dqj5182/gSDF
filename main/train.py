@@ -10,10 +10,8 @@ from lib.utils.dir_utils import export_pose_results
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--cfg', '-e', required=True, type=str)
     parser.add_argument('--cfg', type=str, help='experiment configure file name')
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
-    # parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     if not args.gpu_ids:
