@@ -82,11 +82,11 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 --cfg ../asset/yaml/dexyc
 Actually, when it finishes training, the script will launch the testing automatically. You could also launch the training explicitly by:\
 For Obman
 ```
-CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 -e ../outputs/hsdf_osdf_2net_pa/gsdf_obman/exp.yaml
+CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 --cfg ../asset/yaml/dexycb_test.yaml
 ```
 For DexYCB
 ```
-CUDA_VISIBLE_DEVICES=2 python test.py -e ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video/exp.yaml
+CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 --cfg ../asset/yaml/dexycb_test.yaml
 ```
 After the testing phase ends, you could evaluate the performance:
 For Obman
