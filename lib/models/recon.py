@@ -15,32 +15,32 @@ import os
 import yaml
 import json
 from loguru import logger
-from config import cfg
-from utils.sdf_utils import kinematic_embedding, pixel_align
-from utils.mesh import customized_export_ply
-from utils.solver import icp_ts
-from mano.manolayer import ManoLayer
-from data.dexycb.toolkit.dex_ycb import _SUBJECTS, _SERIALS
+from lib.core.config import cfg
+from lib.utils.sdf_utils import kinematic_embedding, pixel_align
+from lib.utils.mesh import customized_export_ply
+from lib.utils.solver import icp_ts
+from external.mano.manolayer import ManoLayer
+from data.DexYCB.toolkit.dex_ycb import _SUBJECTS, _SERIALS
 
 
 def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_results, obj_pose_results):
     model.eval()
-    if cfg.hand_branch:
+    if cfg.MODEL.hand_branch:
         hand_sdf_decoder = model.module.hand_sdf_head
     
-    if cfg.obj_branch:
+    if cfg.MODEL.obj_branch:
         obj_sdf_decoder = model.module.obj_sdf_head
 
     ply_filename_hand = filename[0] + "_hand"
     ply_filename_obj = filename[0] + "_obj"
 
-    if cfg.hand_branch:
+    if cfg.MODEL.hand_branch:
         hand_sdf_decoder.eval()
     
-    if cfg.obj_branch:
+    if cfg.MODEL.obj_branch:
         obj_sdf_decoder.eval()
 
-    N = cfg.mesh_resolution
+    N = cfg.DATASET.mesh_resolution
     voxel_origin = [-1, -1, -1]
     voxel_size = 2.0 / (N - 1)
 
@@ -63,12 +63,12 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
     samples.requires_grad = False
 
     head = 0
-    max_batch = cfg.point_batch_size
+    max_batch = cfg.DATASET.point_batch_size
     while head < num_samples:
         sample_subset = samples[head : min(head + max_batch, num_samples), 0:3].cuda()
 
-        if cfg.hand_encode_style == 'kine':
-            if cfg.test_with_gt:
+        if cfg.MODEL.hand_encode_style == 'kine':
+            if cfg.TEST.test_with_gt:
                 mano_layer = ManoLayer(ncomps=45, center_idx=0, side="right", mano_root='../common/mano/assets/', use_pca=False, flat_hand_mean=True).cuda()
                 _, _, _, gt_global_trans, gt_rot_center = mano_layer(metas['hand_poses'], th_betas=metas['hand_shapes'], root_palm=False)
                 gt_hand_pose_results = {}
@@ -77,7 +77,7 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
                 hand_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_hand_pose_results, 'hand')
             else:
                 hand_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], hand_pose_results, 'hand')
-        elif cfg.hand_encode_style == 'gt_kine':
+        elif cfg.MODEL.hand_encode_style == 'gt_kine':
             mano_layer = ManoLayer(ncomps=45, center_idx=0, side="right", mano_root='../common/mano/assets/', use_pca=False, flat_hand_mean=True).cuda()
             _, _, _, gt_global_trans, gt_rot_center = mano_layer(metas['hand_poses'], th_betas=metas['hand_shapes'], root_palm=False)
             gt_hand_pose_results = {}
@@ -86,10 +86,10 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
             hand_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_hand_pose_results, 'hand')
         else:
             hand_sample_subset = sample_subset
-        hand_sample_subset = hand_sample_subset.reshape((-1, cfg.hand_point_latent))
+        hand_sample_subset = hand_sample_subset.reshape((-1, cfg.MODEL.hand_point_latent))
 
-        if cfg.obj_encode_style == 'kine':
-            if cfg.test_with_gt:
+        if cfg.MODEL.obj_encode_style == 'kine':
+            if cfg.TEST.test_with_gt:
                 gt_obj_pose_results = {}
                 gt_obj_pose = metas['obj_transform']
                 if not cfg.obj_rot:
@@ -98,42 +98,42 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
                 obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_obj_pose_results, 'obj')
             else:
                 obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], obj_pose_results, 'obj')
-        elif cfg.obj_encode_style == 'gt_trans':
+        elif cfg.MODEL.obj_encode_style == 'gt_trans':
             gt_obj_pose_results = {}
             gt_obj_pose = metas['obj_transform']
             gt_obj_pose[:, :3, :3] = torch.eye(3)
             gt_obj_pose_results['global_trans'] = gt_obj_pose
             obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_obj_pose_results, 'obj')
-        elif cfg.obj_encode_style == 'gt_transrot':
+        elif cfg.MODEL.obj_encode_style == 'gt_transrot':
             gt_obj_pose_results = {}
             gt_obj_pose = metas['obj_transform']
             gt_obj_pose_results['global_trans'] = gt_obj_pose
             obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_obj_pose_results, 'obj')
         else:
             obj_sample_subset = sample_subset
-        obj_sample_subset = obj_sample_subset.reshape((-1, cfg.obj_point_latent))
+        obj_sample_subset = obj_sample_subset.reshape((-1, cfg.MODEL.obj_point_latent))
 
         latent_vec_feat = model.module.backbone_2_sdf(latent_vec)
         latent_vec_feat, _ = pixel_align(cfg, sample_subset, sample_subset.shape[0], latent_vec_feat, metas['hand_center_3d'], metas['cam_intr'])
         latent_vec_sdf = model.module.sdf_encoder(latent_vec_feat)
 
-        if cfg.hand_branch:
+        if cfg.MODEL.hand_branch:
             sdf_hand, _ = decode_sdf(hand_sdf_decoder, latent_vec_sdf, hand_sample_subset, 'hand')
             samples[head : min(head + max_batch, num_samples), 3] = sdf_hand.squeeze(1).detach().cpu()
 
-        if cfg.obj_branch:
+        if cfg.MODEL.obj_branch:
             sdf_obj = decode_sdf(obj_sdf_decoder, latent_vec_sdf, obj_sample_subset, 'obj')
             samples[head : min(head + max_batch, num_samples), 4] = sdf_obj.squeeze(1).detach().cpu()
 
         head += max_batch
 
-    if cfg.hand_branch:
+    if cfg.MODEL.hand_branch:
         sdf_values_hand = samples[:, 3]
         sdf_values_hand = sdf_values_hand.reshape(N, N, N)
     else:
         sdf_values_hand = None
     
-    if cfg.obj_branch:
+    if cfg.MODEL.obj_branch:
         sdf_values_obj = samples[:, 4]
         sdf_values_obj = sdf_values_obj.reshape(N, N, N)
     else:
@@ -161,8 +161,8 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
     while head < num_samples:
         sample_subset = samples_hr[head : min(head + max_batch, num_samples), 0:3].cuda()
 
-        if cfg.hand_encode_style == 'kine':
-            if cfg.test_with_gt:
+        if cfg.MODEL.hand_encode_style == 'kine':
+            if cfg.TEST.test_with_gt:
                 mano_layer = ManoLayer(ncomps=45, center_idx=0, side="right", mano_root='../common/mano/assets/', use_pca=False, flat_hand_mean=True).cuda()
                 _, _, _, gt_global_trans, gt_rot_center = mano_layer(metas['hand_poses'], th_betas=metas['hand_shapes'], root_palm=False)
                 gt_hand_pose_results = {}
@@ -171,7 +171,7 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
                 hand_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_hand_pose_results, 'hand')
             else:
                 hand_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], hand_pose_results, 'hand')
-        elif cfg.hand_encode_style == 'gt_kine':
+        elif cfg.MODEL.hand_encode_style == 'gt_kine':
             mano_layer = ManoLayer(ncomps=45, center_idx=0, side="right", mano_root='../common/mano/assets/', use_pca=False, flat_hand_mean=True).cuda()
             _, _, _, gt_global_trans, gt_rot_center = mano_layer(metas['hand_poses'], th_betas=metas['hand_shapes'], root_palm=False)
             gt_hand_pose_results = {}
@@ -180,10 +180,10 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
             hand_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_hand_pose_results, 'hand')
         else:
             hand_sample_subset = sample_subset
-        hand_sample_subset = hand_sample_subset.reshape((-1, cfg.hand_point_latent))
+        hand_sample_subset = hand_sample_subset.reshape((-1, cfg.MODEL.hand_point_latent))
 
-        if cfg.obj_encode_style == 'kine':
-            if cfg.test_with_gt:
+        if cfg.MODEL.obj_encode_style == 'kine':
+            if cfg.TEST.test_with_gt:
                 gt_obj_pose_results = {}
                 gt_obj_pose = metas['obj_transform']
                 if not cfg.obj_rot:
@@ -192,30 +192,30 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
                 obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_obj_pose_results, 'obj')
             else:
                 obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], obj_pose_results, 'obj')
-        elif cfg.obj_encode_style == 'gt_trans':
+        elif cfg.MODEL.obj_encode_style == 'gt_trans':
             gt_obj_pose_results = {}
             gt_obj_pose = metas['obj_transform']
             gt_obj_pose[:, :3, :3] = torch.eye(3)
             gt_obj_pose_results['global_trans'] = gt_obj_pose
             obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_obj_pose_results, 'obj')
-        elif cfg.obj_encode_style == 'gt_transrot':
+        elif cfg.MODEL.obj_encode_style == 'gt_transrot':
             gt_obj_pose_results = {}
             gt_obj_pose = metas['obj_transform']
             gt_obj_pose_results['global_trans'] = gt_obj_pose
             obj_sample_subset = kinematic_embedding(cfg, sample_subset, sample_subset.shape[0], gt_obj_pose_results, 'obj')
         else:
             obj_sample_subset = sample_subset
-        obj_sample_subset = obj_sample_subset.reshape((-1, cfg.obj_point_latent))
+        obj_sample_subset = obj_sample_subset.reshape((-1, cfg.MODEL.obj_point_latent))
 
         latent_vec_feat = model.module.backbone_2_sdf(latent_vec)
         latent_vec_feat, _ = pixel_align(cfg, sample_subset, sample_subset.shape[0], latent_vec_feat, metas['hand_center_3d'], metas['cam_intr'])
         latent_vec_sdf = model.module.sdf_encoder(latent_vec_feat)
 
-        if cfg.hand_branch:
+        if cfg.MODEL.hand_branch:
             sdf_hand, predicted_class = decode_sdf(hand_sdf_decoder, latent_vec_sdf, hand_sample_subset, 'hand')
             samples_hr[head : min(head + max_batch, num_samples), 3] = sdf_hand.squeeze(1).detach().cpu()
 
-        if cfg.obj_branch:
+        if cfg.MODEL.obj_branch:
             sdf_obj = decode_sdf(obj_sdf_decoder, latent_vec_sdf, obj_sample_subset, 'obj')
             samples_hr[head : min(head + max_batch, num_samples), 4] = sdf_obj.squeeze(1).detach().cpu()
 
@@ -229,10 +229,10 @@ def reconstruct(cfg, filename, model, latent_vec, inputs, metas, hand_pose_resul
     voxel_size = new_voxel_size
     voxel_origin = new_origin.tolist()
 
-    if cfg.hand_branch:
+    if cfg.MODEL.hand_branch:
         vertices, mesh_faces, offset, scale = convert_sdf_samples_to_ply(sdf_values_hand.data.cpu(), voxel_origin, voxel_size, True, ply_filename_hand + ".ply", offset=None, scale=None)
 
-    if cfg.obj_branch:
+    if cfg.MODEL.obj_branch:
         convert_sdf_samples_to_ply(sdf_values_obj.data.cpu(), voxel_origin, voxel_size, False, ply_filename_obj + ".ply", offset, scale)
 
 def decode_sdf(sdf_decoder, latent_vector, points, mode):
@@ -248,8 +248,8 @@ def decode_sdf(sdf_decoder, latent_vector, points, mode):
 
 
 def get_higher_res_cube(sdf_values_hand, sdf_values_obj, voxel_origin, voxel_size):
-    N = cfg.mesh_resolution
-    if cfg.hand_branch:
+    N = cfg.DATASET.mesh_resolution
+    if cfg.MODEL.hand_branch:
         indices = torch.nonzero(sdf_values_hand < 0).float()
         if indices.shape[0] == 0:
             min_hand = torch.Tensor([0., 0., 0.])
@@ -265,7 +265,7 @@ def get_higher_res_cube(sdf_values_hand, sdf_values_obj, voxel_origin, voxel_siz
             z_max_hand = torch.max(indices[:,2])
             max_hand = torch.Tensor([x_max_hand, y_max_hand, z_max_hand])
 
-    if cfg.obj_branch:
+    if cfg.MODEL.obj_branch:
         indices = torch.nonzero(sdf_values_obj < 0).float()
         if indices.shape[0] == 0:
             min_obj = torch.Tensor([0., 0., 0.])
@@ -281,10 +281,10 @@ def get_higher_res_cube(sdf_values_hand, sdf_values_obj, voxel_origin, voxel_siz
             z_max_obj = torch.max(indices[:,2])
             max_obj = torch.Tensor([x_max_obj, y_max_obj, z_max_obj])
 
-    if not cfg.obj_branch:
+    if not cfg.MODEL.obj_branch:
         min_index = min_hand
         max_index = max_hand
-    elif not cfg.hand_branch:
+    elif not cfg.MODEL.hand_branch:
         min_index = min_obj
         max_index = max_obj
     else:

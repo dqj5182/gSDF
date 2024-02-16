@@ -8,16 +8,16 @@ DATASET:
   testset_obj_source: DexYCB/data/mesh_data/mesh_obj/
 
 MODEL:
-  ckpt: ../outputs/pose_kpt/dexycbs0_29k_resnet18_rot0_6d_h1_o0_norm0_e100_b128_vw1.0_ocrw0.0_how1.0_sow0.0/model_dump/snapshot_99.pth.tar
-
-TRAIN:
-  recon_scale: 6.2
   backbone_pose: resnet_18
   backbone_shape: resnet_18
   hand_encode_style: kine
   hand_point_latent: 51
   obj_encode_style: kine
   obj_point_latent: 72
+  weight_path: ../outputs/hsdf_osdf_2net_pa/dexycbs0_29k_resnet18_resnet18_h1_o1_sdf5_cls0_rot0_hand_kine_51_obj_kine_72_np2000_adf1_e1600_ae1201_scale6.2_b64_hsw0.5_osw0.5_hcw0.0_vw0.5/model_dump/snapshot_1599.pth.tar
+
+TRAIN:
+  recon_scale: 6.2
   hand_sdf_weight: 0.5
   obj_sdf_weight: 0.5
   volume_weight: 0.5

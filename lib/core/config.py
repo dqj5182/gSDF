@@ -8,13 +8,13 @@ from loguru import logger
 from contextlib import redirect_stdout
 
 
-cfg = edict() #CN()
+cfg = edict()
 
 cfg.task = 'hsdf_osdf_2net_pa'
 cfg.cur_dir = osp.dirname(os.path.abspath(__file__))
 cfg.root_dir = osp.join(cfg.cur_dir, '..', '..')
 cfg.data_dir = osp.join(cfg.root_dir, 'data')
-cfg.output_dir = '.'
+cfg.output_dir = osp.join('outputs', cfg.task)
 cfg.model_dir = './model_dump'
 cfg.vis_dir = './vis'
 cfg.log_dir = './log'
@@ -55,7 +55,7 @@ cfg.MODEL.obj_branch = True
 cfg.MODEL.hand_cls = False
 cfg.MODEL.obj_rot = False
 cfg.MODEL.with_add_feats = True
-cfg.MODEL.ckpt = '.'
+cfg.MODEL.weight_path = '.'
 
 cfg.MODEL.sdf_head = CN()
 cfg.MODEL.sdf_head.layers = 5
@@ -118,14 +118,12 @@ def update_config(config_file, args, mode='train'):
             if k in cfg:
                 if isinstance(v, dict):
                     _update_dict(k, v)
+
                 else:
                     cfg[k] = v
             else:
                 raise ValueError("{} not exist in config.py".format(k))
 
-    # cfg.defrost()
-    # cfg.merge_from_file(args.cfg)
-    # cfg.merge_from_list(args.opts)
     cfg.OTHERS.gpu_ids = args.gpu_ids
     cfg.OTHERS.num_gpus = len(cfg.OTHERS.gpu_ids.split(','))
     os.environ["CUDA_VISIBLE_DEVICES"] = cfg.OTHERS.gpu_ids
@@ -154,12 +152,12 @@ def update_config(config_file, args, mode='train'):
         os.makedirs(cfg.hand_pose_result_dir, exist_ok=True)
         os.makedirs(cfg.obj_pose_result_dir, exist_ok=True)
 
-        # cfg.freeze()
-        # with open(osp.join(cfg.output_dir, 'exp.yaml'), 'w') as f:
-        #     with redirect_stdout(f): print(cfg.dump())
         with open(osp.join(cfg.output_dir, 'exp.yaml'), 'w') as f:
             yaml.dump(cfg, f, default_flow_style=False)
     else:
+        exp_info = [str(cfg.DATASET.trainset_3d).lower() + cfg.DATASET.trainset_3d_split, cfg.MODEL.backbone_pose.replace('_', ''), cfg.MODEL.backbone_shape.replace('_', ''), 'h' + str(int(cfg.MODEL.hand_branch)), 'o' + str(int(cfg.MODEL.obj_branch)), 'sdf' + str(cfg.MODEL.sdf_head.layers), 'cls' + str(int(cfg.MODEL.hand_cls)), 'rot' + str(int(cfg.MODEL.obj_rot)), 'hand_' + cfg.MODEL.hand_encode_style + '_' + str(cfg.MODEL.hand_point_latent), 'obj_' + cfg.MODEL.obj_encode_style + '_' + str(cfg.MODEL.obj_point_latent), 'np' + str(cfg.TRAIN.num_sample_points), 'adf' + str(int(cfg.MODEL.with_add_feats)), 'e' + str(cfg.TRAIN.end_epoch), 'ae' + str(cfg.TRAIN.sdf_add_epoch), 'scale' + str(cfg.TRAIN.recon_scale), 'b' + str(cfg.OTHERS.num_gpus * cfg.TRAIN.train_batch_size), 'hsw' + str(cfg.TRAIN.hand_sdf_weight), 'osw' + str(cfg.TRAIN.obj_sdf_weight), 'hcw' + str(cfg.TRAIN.hand_cls_weight), 'vw' + str(cfg.TRAIN.volume_weight)]
+        cfg.output_dir = osp.join(cfg.root_dir, 'outputs', cfg.task, '_'.join(exp_info))
+        cfg.model_dir = osp.join(cfg.output_dir, 'model_dump')
         cfg.result_dir = osp.join(cfg.output_dir, '_'.join(['result', cfg.DATASET.testset, 'gt', str(int(cfg.TEST.test_with_gt))]))
         cfg.log_dir = osp.join(cfg.output_dir, 'test_log')
         cfg.sdf_result_dir = osp.join(cfg.result_dir, 'sdf_mesh')
@@ -172,8 +170,6 @@ def update_config(config_file, args, mode='train'):
         os.makedirs(cfg.cls_sdf_result_dir, exist_ok=True)
         os.makedirs(cfg.hand_pose_result_dir, exist_ok=True)
         os.makedirs(cfg.obj_pose_result_dir, exist_ok=True)
-
-        # cfg.freeze()
 
 sys.path.insert(0, osp.join(cfg.root_dir, 'common'))
 from lib.utils.dir_utils import add_pypath

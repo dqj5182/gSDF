@@ -35,9 +35,9 @@ def pixel_align(cfg, input_xyz_points, num_points_per_scene, feature_maps, hand_
 
 def kinematic_embedding(cfg, input_points, num_points_per_scene, pose_results, mode):
     if 'hand' in mode:
-        assert cfg.hand_point_latent in [6, 21, 36, 51], 'please set a right hand embedding size'
+        assert cfg.MODEL.hand_point_latent in [6, 21, 36, 51], 'please set a right hand embedding size'
     else:
-        assert cfg.obj_point_latent in [6, 9, 69, 72], 'please set a right object embedding size'
+        assert cfg.MODEL.obj_point_latent in [6, 9, 69, 72], 'please set a right object embedding size'
 
     input_points = input_points.reshape((-1, num_points_per_scene, 3))
     batch_size = input_points.shape[0]
@@ -58,16 +58,16 @@ def kinematic_embedding(cfg, input_points, num_points_per_scene, pose_results, m
         inv_homo_xyz_mano = torch.matmul(inv_global_trans, homo_xyz_mano.transpose(3, 4)).transpose(3, 4)
         inv_homo_xyz_mano = inv_homo_xyz_mano.squeeze(3)
         inv_xyz_mano = dehomoify(inv_homo_xyz_mano)
-        if cfg.hand_point_latent == 6:
+        if cfg.MODEL.hand_point_latent == 6:
             inv_xyz_mano = inv_xyz_mano[:, :, [0], :]
 
-        if cfg.hand_point_latent == 21:
+        if cfg.MODEL.hand_point_latent == 21:
             inv_xyz_mano = torch.cat([inv_xyz_mano[:, :, [0], :], inv_xyz_mano[:, :, [1, 4, 7, 10, 13], :]], dim=2)
         
-        if cfg.hand_point_latent == 36:
+        if cfg.MODEL.hand_point_latent == 36:
             inv_xyz_mano = torch.cat([inv_xyz_mano[:, :, [0], :], inv_xyz_mano[:, :, [1, 4, 7, 10, 13], :], inv_xyz_mano[:, :, [2, 5, 8, 11, 14], :]], dim=2)
         
-        if cfg.hand_point_latent == 51:
+        if cfg.MODEL.hand_point_latent == 51:
             inv_xyz_mano = torch.cat([inv_xyz_mano[:, :, [0], :], inv_xyz_mano[:, :, [1, 4, 7, 10, 13], :], inv_xyz_mano[:, :, [2, 5, 8, 11, 14], :], inv_xyz_mano[:, :, [3, 6, 9, 12, 15], :]], dim=2)
         
         point_embedding = torch.cat([xyz_mano.squeeze(2), inv_xyz_mano], 2)
@@ -88,21 +88,21 @@ def kinematic_embedding(cfg, input_points, num_points_per_scene, pose_results, m
         except:
             pass
 
-        if cfg.obj_point_latent == 6:
+        if cfg.MODEL.obj_point_latent == 6:
             point_embedding = torch.cat([xyz, inv_xyz_obj], 2)
         
-        if cfg.obj_point_latent == 9:
+        if cfg.MODEL.obj_point_latent == 9:
             inv_homo_xyz_mano = torch.matmul(inv_hand_trans, homo_xyz_mano.transpose(1, 2)).transpose(1, 2)
             inv_xyz_mano = dehomoify(inv_homo_xyz_mano)
             point_embedding = torch.cat([xyz, inv_xyz_obj, inv_xyz_mano], 2)
 
-        if cfg.obj_point_latent == 69:
+        if cfg.MODEL.obj_point_latent == 69:
             inv_xyz_joint = [xyz, inv_xyz_obj]
             for i in range(21):
                 inv_xyz_joint.append(xyz - pose_results['joints'][:, [i], :])
             point_embedding = torch.cat(inv_xyz_joint, 2)
         
-        if cfg.obj_point_latent == 72:
+        if cfg.MODEL.obj_point_latent == 72:
             inv_homo_xyz_mano = torch.matmul(inv_hand_trans, homo_xyz_mano.transpose(1, 2)).transpose(1, 2)
             inv_xyz_mano = dehomoify(inv_homo_xyz_mano)
             inv_xyz_joint = [xyz, inv_xyz_obj, inv_xyz_mano]

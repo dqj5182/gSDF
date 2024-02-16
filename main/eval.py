@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File        :eval.py
-#@Date        :2022/07/19 10:32:37
-#@Author      :zerui chen
-#@Contact     :zerui.chen@inria.fr
-
 import os
 import sys
 import argparse
@@ -52,7 +45,7 @@ def main():
         mesh_obj_source = '../data/obman/data/test/mesh_obj/'
     elif testset == 'dexycb':
         data_root = '../data/dexycb/data/'
-        from data.dexycb.toolkit.dex_ycb import _SUBJECTS
+        from data.DexYCB.toolkit.dex_ycb import _SUBJECTS
         mesh_hand_source = '../data/dexycb/data/mesh_data/mesh_hand/'
         mesh_obj_source = '../data/dexycb/data/mesh_data/mesh_obj/'
 
