@@ -31,7 +31,7 @@ pip install -r requirements.txt
         └── test
             ├── rgb
             ├── mesh_hand
-            ├── mesh_obj
+            └── mesh_obj
    ```
 
 2. DexYCB dataset preparations. 
