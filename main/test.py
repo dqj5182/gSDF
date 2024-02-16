@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- encoding: utf-8 -*-
-#@File :train.py
-#@Date :2022/05/03 16:40:33
-#@Author :zerui chen
-#@Contact :zerui.chen@inria.fr
-
-
 import os
 import sys
 import argparse
@@ -20,11 +12,8 @@ from lib.utils.dir_utils import export_pose_results
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', '-e', required=True, type=str)
+    parser.add_argument('--cfg', type=str, help='experiment configure file name')
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
-    # parser.add_argument('--local_rank', default=0, type=int)
-    parser.add_argument('--test_epoch', default=0, type=int)
-    parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     if not args.gpu_ids:
@@ -47,10 +36,13 @@ def main():
     from lib.core.config import cfg, update_config
     update_config(args.cfg, args, mode='test')
     from lib.core.base import Tester
-    if args.test_epoch == 0:
-        args.test_epoch = cfg.TRAIN.end_epoch - 1
 
-    tester = Tester(args.test_epoch)
+    if cfg.MODEL.weight_path != '':
+        test_epoch = int(cfg.MODEL.weight_path.split('/')[-1].split('snapshot_')[-1].split('.pth.tar')[0])
+    else:
+        test_epoch = cfg.TRAIN.end_epoch - 1
+
+    tester = Tester(test_epoch)
     tester._make_batch_generator()
     tester._make_model()
 

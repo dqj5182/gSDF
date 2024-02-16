@@ -9,7 +9,7 @@ MODEL:
   hand_point_latent: 6
   obj_encode_style: kine
   obj_point_latent: 6
-  weight_path: ../outputs/pose_kpt/obman138k_resnet18_ocr0_h1_o1_e100_b192_vw1.0/model_dump/snapshot_99.pth.tar
+  weight_path: ../outputs/hsdf_osdf_2net_pa/obman87k_resnet18_resnet18_h1_o1_sdf5_cls0_rot0_hand_kine_6_obj_kine_6_np2000_adf1_e1600_ae1201_scale7.0_b64_hsw0.5_osw0.5_hcw0.0_vw0.5/model_dump/snapshot_700.pth.tar
 
 TRAIN:
   recon_scale: 7.0

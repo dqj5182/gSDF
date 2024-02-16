@@ -13,7 +13,7 @@ def parse_args():
     # parser.add_argument('--cfg', '-e', required=True, type=str)
     parser.add_argument('--cfg', type=str, help='experiment configure file name')
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
-    parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
+    # parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     if not args.gpu_ids:
