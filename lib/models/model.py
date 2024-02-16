@@ -30,10 +30,7 @@ class pose_model(nn.Module):
         hm_feat = self.neck(backbone_feat)
         hm_pred = self.volume_head(hm_feat)
         hm_pred, hm_conf = soft_argmax(cfg, hm_pred, 21)
-        if cfg.testset == 'core50':
-            volume_joint_preds = decode_volume_abs(cfg, hm_pred, metas['cam_intr'])
-        else:
-            volume_joint_preds = decode_volume(cfg, hm_pred, metas['hand_center_3d'], metas['cam_intr'])
+        volume_joint_preds = decode_volume(cfg, hm_pred, metas['hand_center_3d'], metas['cam_intr'])
         
         if self.cfg.hand_branch:
             hand_pose_results = ik_solver_mano(None, volume_joint_preds[:, :21])
@@ -205,16 +202,11 @@ class Model(nn.Module):
                     hm_feat = self.neck(backbone_feat)
                     hm_pred = self.volume_head(hm_feat)
                     hm_pred, hm_conf = soft_argmax(cfg, hm_pred, 1)
-                    if cfg.testset == 'core50':
-                        volume_joint_preds = decode_volume(cfg, hm_pred, hand_pose_results['volume_joints'][:, 0, :], metas['cam_intr'])
-                        obj_transform = torch.zeros((input_img.shape[0], 4, 4)).to(input_img.device)
-                        obj_transform[:, :3, 3] = volume_joint_preds.squeeze(1) - hand_pose_results['volume_joints'][:, 0, :]
-                        obj_transform[:, 3, 3] = 1
-                    else:
-                        volume_joint_preds = decode_volume(cfg, hm_pred, metas['hand_center_3d'], metas['cam_intr'])
-                        obj_transform = torch.zeros((input_img.shape[0], 4, 4)).to(input_img.device)
-                        obj_transform[:, :3, 3] = volume_joint_preds.squeeze(1) - metas['hand_center_3d']
-                        obj_transform[:, 3, 3] = 1
+
+                    volume_joint_preds = decode_volume(cfg, hm_pred, metas['hand_center_3d'], metas['cam_intr'])
+                    obj_transform = torch.zeros((input_img.shape[0], 4, 4)).to(input_img.device)
+                    obj_transform[:, :3, 3] = volume_joint_preds.squeeze(1) - metas['hand_center_3d']
+                    obj_transform[:, 3, 3] = 1
 
                     if self.rot_head is not None:
                         rot_feat = self.rot_head(backbone_feat.mean(3).mean(2))
