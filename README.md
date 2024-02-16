@@ -15,7 +15,7 @@ pip install -r requirements.txt
 - Download ObMan data from [the official website](https://www.di.ens.fr/willow/research/obman/data/requestaccess.php).
 - Set up a soft link from the download path to `${ROOT}/data/obman/data`.
 - Download processed [SDF files](https://drive.google.com/drive/folders/1GjFJBJlbJxeYrExtcYEdhAaeH-wLZOIF) and [json files](https://drive.google.com/drive/folders/1DBzG9J0uLzCy4A6W6Uq6Aq4JNAHiiNJQ).
-- Run `${ROOT}/preprocess/cocoify_obman.py` to generate LMDB training files. The data organization looks like this: 
+- The data organization should look like this: 
    ```
    ${ROOT}/data/obman
    └── splits
@@ -26,11 +26,8 @@ pip install -r requirements.txt
         ├── val
         ├── train
         |   ├── rgb
-        |   ├── rgb.lmdb
         |   ├── sdf_hand
-        |   ├── sdf_hand.lmdb
         |   ├── sdf_obj
-        |   ├── sdf_obj.lmdb
         └── test
             ├── rgb
             ├── mesh_hand
@@ -41,7 +38,7 @@ pip install -r requirements.txt
 - Download DexYCB data from [the official webpage](https://dex-ycb.github.io/).
 - Set up a soft link from the download path to `${ROOT}/data/dexycb/data`.
 - Download processed [SDF files](https://drive.google.com/drive/folders/15yjzjYcqyOiIbX-6uaeYOezVH4stDTCG) and [json files](https://drive.google.com/drive/folders/1qULhMx1PrnXkihrPacIFzLOT5H2FZSj7).
-- Run `${ROOT}/preprocess/cocoify_dexycb.py` to generate LMDB training files. The data organization looks like this: 
+- The data organization should look like this: 
    ```
    ${ROOT}/data/obman
    └── splits
@@ -57,10 +54,7 @@ pip install -r requirements.txt
         ├── bop
         ├── models
         ├── mesh_data
-        ├── sdf_data
-        ├── rgb_s0.lmdb
-        ├── sdf_hand_s0.lmdb
-        └── sdf_obj_s0.lmdb
+        └── sdf_data
    ```
 
 ## Training
