@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from config import cfg
+from lib.core.config import cfg
 from lib.models.resnet import ResNetBackbone
 from lib.models.unet import UNet
 from lib.models.sdf_head import SDFHead
@@ -18,7 +18,7 @@ class pose_model(nn.Module):
         super(pose_model, self).__init__()
         self.cfg = cfg
         self.backbone = backbone
-        self.dim_backbone_feat = 2048 if self.cfg.backbone_pose == 'resnet_50' else 512
+        self.dim_backbone_feat = 2048 if self.cfg.MODEL.backbone_pose == 'resnet_50' else 512
         self.neck = neck
         self.volume_head = volume_head
         for p in self.parameters():
@@ -32,7 +32,7 @@ class pose_model(nn.Module):
         hm_pred, hm_conf = soft_argmax(cfg, hm_pred, 21)
         volume_joint_preds = decode_volume(cfg, hm_pred, metas['hand_center_3d'], metas['cam_intr'])
         
-        if self.cfg.hand_branch:
+        if self.cfg.MODEL.hand_branch:
             hand_pose_results = ik_solver_mano(None, volume_joint_preds[:, :21])
             hand_pose_results['volume_joints'] = volume_joint_preds
         else:
@@ -50,15 +50,15 @@ class Model(nn.Module):
         self.neck = neck
         self.volume_head = volume_head
         self.rot_head = rot_head
-        self.dim_backbone_feat = 2048 if self.cfg.backbone_shape == 'resnet_50' else 512
+        self.dim_backbone_feat = 2048 if self.cfg.MODEL.backbone_shape == 'resnet_50' else 512
         self.hand_sdf_head = hand_sdf_head
         self.obj_sdf_head = obj_sdf_head
 
         self.backbone_2_sdf = UNet(self.dim_backbone_feat, 256, 1)
-        if self.cfg.with_add_feats:
-            self.sdf_encoder = nn.Linear(260, self.cfg.sdf_latent)
+        if self.cfg.MODEL.with_add_feats:
+            self.sdf_encoder = nn.Linear(260, self.cfg.MODEL.sdf_latent)
         else:
-            self.sdf_encoder = nn.Linear(256, self.cfg.sdf_latent)
+            self.sdf_encoder = nn.Linear(256, self.cfg.MODEL.sdf_latent)
             
         self.loss_l1 = torch.nn.L1Loss(reduction='sum')
         self.loss_l2 = torch.nn.MSELoss()
@@ -68,37 +68,37 @@ class Model(nn.Module):
     def forward(self, inputs, targets=None, metas=None, mode='train'):
         if mode == 'train':
             input_img = inputs['img']
-            if self.cfg.hand_branch and self.cfg.obj_branch:
+            if self.cfg.MODEL.hand_branch and self.cfg.MODEL.obj_branch:
                 sdf_data = torch.cat([targets['hand_sdf'], targets['obj_sdf']], 1)
                 cls_data = torch.cat([targets['hand_labels'], targets['obj_labels']], 1)
-                if metas['epoch'] < self.cfg.sdf_add_epoch:
+                if metas['epoch'] < self.cfg.TRAIN.sdf_add_epoch:
                     mask_hand = torch.cat([torch.ones(targets['hand_sdf'].size()[:2]), torch.zeros(targets['obj_sdf'].size()[:2])], 1)
-                    mask_hand = (mask_hand.cuda()).reshape(self.cfg.train_batch_size * self.cfg.num_sample_points).unsqueeze(1)
+                    mask_hand = (mask_hand.cuda()).reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1)
                     mask_obj = torch.cat([torch.zeros(targets['hand_sdf'].size()[:2]), torch.ones(targets['obj_sdf'].size()[:2])], 1)
-                    mask_obj = (mask_obj.cuda()).reshape(self.cfg.train_batch_size * self.cfg.num_sample_points).unsqueeze(1)
+                    mask_obj = (mask_obj.cuda()).reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1)
                 else:
                     mask_hand = torch.cat([torch.ones(targets['hand_sdf'].size()[:2]), torch.ones(targets['obj_sdf'].size()[:2])], 1)
-                    mask_hand = (mask_hand.cuda()).reshape(self.cfg.train_batch_size * self.cfg.num_sample_points).unsqueeze(1)
+                    mask_hand = (mask_hand.cuda()).reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1)
                     mask_obj = torch.cat([torch.ones(targets['hand_sdf'].size()[:2]), torch.ones(targets['obj_sdf'].size()[:2])], 1)
-                    mask_obj = (mask_obj.cuda()).reshape(self.cfg.train_batch_size * self.cfg.num_sample_points).unsqueeze(1)
-            elif self.cfg.hand_branch:
+                    mask_obj = (mask_obj.cuda()).reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1)
+            elif self.cfg.MODEL.hand_branch:
                 sdf_data = targets['hand_sdf']
                 cls_data = targets['hand_labels']
-                mask_hand = torch.ones(self.cfg.train_batch_size * self.cfg.num_sample_points).unsqueeze(1).cuda()
-            elif self.cfg.obj_branch:
+                mask_hand = torch.ones(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1).cuda()
+            elif self.cfg.MODEL.obj_branch:
                 sdf_data = targets['obj_sdf']
                 cls_data = targets['obj_labels']
-                mask_hand = torch.ones(self.cfg.train_batch_size * self.cfg.num_sample_points).unsqueeze(1).cuda()
+                mask_hand = torch.ones(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1).cuda()
 
-            sdf_data = sdf_data.reshape(self.cfg.train_batch_size * self.cfg.num_sample_points, -1)
-            cls_data = cls_data.to(torch.long).reshape(self.cfg.train_batch_size * self.cfg.num_sample_points)
+            sdf_data = sdf_data.reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points, -1)
+            cls_data = cls_data.to(torch.long).reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points)
             xyz_points = sdf_data[:, 0:-2]
             sdf_gt_hand = sdf_data[:, -2].unsqueeze(1)
             sdf_gt_obj = sdf_data[:, -1].unsqueeze(1)
-            if self.cfg.hand_branch:
-                sdf_gt_hand = torch.clamp(sdf_gt_hand, -self.cfg.clamp_dist, self.cfg.clamp_dist)
-            if self.cfg.obj_branch:
-                sdf_gt_obj = torch.clamp(sdf_gt_obj, -self.cfg.clamp_dist, self.cfg.clamp_dist)
+            if self.cfg.MODEL.hand_branch:
+                sdf_gt_hand = torch.clamp(sdf_gt_hand, -self.cfg.TRAIN.clamp_dist, self.cfg.TRAIN.clamp_dist)
+            if self.cfg.MODEL.obj_branch:
+                sdf_gt_obj = torch.clamp(sdf_gt_obj, -self.cfg.TRAIN.clamp_dist, self.cfg.TRAIN.clamp_dist)
 
             with torch.no_grad():
                 hand_pose_results = self.pose_model(inputs, metas)
@@ -107,7 +107,7 @@ class Model(nn.Module):
             backbone_feat = self.backbone(input_img)
 
             # go through deconvolution
-            if self.cfg.obj_branch:
+            if self.cfg.MODEL.obj_branch:
                 obj_pose_results = {}
                 hm_feat = self.neck(backbone_feat)
                 hm_pred = self.volume_head(hm_feat)
@@ -137,31 +137,31 @@ class Model(nn.Module):
 
             # generate features for the sdf head
             sdf_feat = self.backbone_2_sdf(backbone_feat)
-            sdf_feat, _ = pixel_align(self.cfg, xyz_points, self.cfg.num_sample_points, sdf_feat, metas['hand_center_3d'], metas['cam_intr'])
+            sdf_feat, _ = pixel_align(self.cfg, xyz_points, self.cfg.TRAIN.num_sample_points, sdf_feat, metas['hand_center_3d'], metas['cam_intr'])
             sdf_feat = self.sdf_encoder(sdf_feat)
 
             if self.hand_sdf_head is not None:
-                if self.cfg.hand_encode_style == 'kine':
-                    hand_points = kinematic_embedding(self.cfg, xyz_points, self.cfg.num_sample_points, hand_pose_results, 'hand')
-                    hand_points = hand_points.reshape((-1, self.cfg.hand_point_latent))
+                if self.cfg.MODEL.hand_encode_style == 'kine':
+                    hand_points = kinematic_embedding(self.cfg, xyz_points, self.cfg.TRAIN.num_sample_points, hand_pose_results, 'hand')
+                    hand_points = hand_points.reshape((-1, self.cfg.MODEL.hand_point_latent))
                 else:
-                    hand_points = xyz_points.reshape((-1, self.cfg.hand_point_latent))
+                    hand_points = xyz_points.reshape((-1, self.cfg.MODEL.hand_point_latent))
                 hand_sdf_decoder_inputs = torch.cat([sdf_feat, hand_points], dim=1)
                 sdf_hand, cls_hand = self.hand_sdf_head(hand_sdf_decoder_inputs)
-                sdf_hand = torch.clamp(sdf_hand, min=-self.cfg.clamp_dist, max=self.cfg.clamp_dist)
+                sdf_hand = torch.clamp(sdf_hand, min=-self.cfg.TRAIN.clamp_dist, max=self.cfg.TRAIN.clamp_dist)
             else:
                 sdf_hand = None
                 cls_hand = None
         
             if self.obj_sdf_head is not None:
-                if self.cfg.obj_encode_style == 'kine':
-                    obj_points = kinematic_embedding(self.cfg, xyz_points, self.cfg.num_sample_points, obj_pose_results, 'obj')
-                    obj_points = obj_points.reshape((-1, self.cfg.obj_point_latent))
+                if self.cfg.MODEL.obj_encode_style == 'kine':
+                    obj_points = kinematic_embedding(self.cfg, xyz_points, self.cfg.TRAIN.num_sample_points, obj_pose_results, 'obj')
+                    obj_points = obj_points.reshape((-1, self.cfg.MODEL.obj_point_latent))
                 else:
-                    obj_points = xyz_points.reshape((-1, self.cfg.obj_point_latent))
+                    obj_points = xyz_points.reshape((-1, self.cfg.MODEL.obj_point_latent))
                 obj_sdf_decoder_inputs = torch.cat([sdf_feat, obj_points], dim=1)
                 sdf_obj, _ = self.obj_sdf_head(obj_sdf_decoder_inputs)
-                sdf_obj = torch.clamp(sdf_obj, min=-self.cfg.clamp_dist, max=self.cfg.clamp_dist)
+                sdf_obj = torch.clamp(sdf_obj, min=-self.cfg.TRAIN.clamp_dist, max=self.cfg.TRAIN.clamp_dist)
             else:
                 sdf_obj = None
 
@@ -172,20 +172,20 @@ class Model(nn.Module):
 
             loss = {}
             if self.hand_sdf_head is not None:
-                loss['hand_sdf'] = self.cfg.hand_sdf_weight * self.loss_l1(sdf_hand * mask_hand, sdf_gt_hand * mask_hand) / mask_hand.sum()
+                loss['hand_sdf'] = self.cfg.TRAIN.hand_sdf_weight * self.loss_l1(sdf_hand * mask_hand, sdf_gt_hand * mask_hand) / mask_hand.sum()
 
             if self.obj_sdf_head is not None:
-                loss['obj_sdf'] = self.cfg.obj_sdf_weight * self.loss_l1(sdf_obj * mask_obj, sdf_gt_obj * mask_obj) / mask_obj.sum()
+                loss['obj_sdf'] = self.cfg.TRAIN.obj_sdf_weight * self.loss_l1(sdf_obj * mask_obj, sdf_gt_obj * mask_obj) / mask_obj.sum()
             
-            if cfg.hand_branch and cfg.obj_branch:
-                loss['volume_joint'] = cfg.volume_weight * self.loss_l2(obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
+            if cfg.MODEL.hand_branch and cfg.MODEL.obj_branch:
+                loss['volume_joint'] = cfg.TRAIN.volume_weight * self.loss_l2(obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
 
-            if cfg.obj_rot and cfg.corner_weight > 0:
-                loss['obj_corners'] = cfg.corner_weight * self.loss_l2(obj_pose_results['corners'], targets['obj_corners_3d'])
+            if cfg.MODEL.obj_rot and cfg.TRAIN.corner_weight > 0:
+                loss['obj_corners'] = cfg.TRAIN.corner_weight * self.loss_l2(obj_pose_results['corners'], targets['obj_corners_3d'])
 
             if cls_hand is not None:
-                if metas['epoch'] >= self.cfg.sdf_add_epoch:
-                    loss['hand_cls'] = self.cfg.hand_cls_weight * self.loss_ce(cls_hand, cls_data)
+                if metas['epoch'] >= self.cfg.TRAIN.sdf_add_epoch:
+                    loss['hand_cls'] = self.cfg.TRAIN.hand_cls_weight * self.loss_ce(cls_hand, cls_data)
                 else:
                     loss['hand_cls'] = 0. * self.loss_ce(cls_hand, cls_data)
 
@@ -197,7 +197,7 @@ class Model(nn.Module):
                 # go through backbone
                 backbone_feat = self.backbone(input_img)
 
-                if self.cfg.obj_branch:
+                if self.cfg.MODEL.obj_branch:
                     obj_pose_results = {}
                     hm_feat = self.neck(backbone_feat)
                     hm_pred = self.volume_head(hm_feat)
@@ -230,8 +230,8 @@ class Model(nn.Module):
 
 
 def get_model(cfg, is_train):
-    num_pose_resnet_layers = int(cfg.backbone_pose.split('_')[-1])
-    num_shape_resnet_layers = int(cfg.backbone_shape.split('_')[-1])
+    num_pose_resnet_layers = int(cfg.MODEL.backbone_pose.split('_')[-1])
+    num_shape_resnet_layers = int(cfg.MODEL.backbone_shape.split('_')[-1])
 
     backbone_pose = ResNetBackbone(num_pose_resnet_layers)
     backbone_shape = ResNetBackbone(num_shape_resnet_layers)
@@ -241,14 +241,14 @@ def get_model(cfg, is_train):
 
     neck_inplanes = 2048 if num_pose_resnet_layers == 50 else 512
     neck = UNet(neck_inplanes, 256, 3)
-    if cfg.hand_branch:
+    if cfg.MODEL.hand_branch:
         volume_head_hand = ConvHead([256, 21 * 64], kernel=1, stride=1, padding=0, bnrelu_final=False)
     posenet = pose_model(cfg, backbone_pose, neck, volume_head_hand)
 
-    if cfg.obj_branch:
+    if cfg.MODEL.obj_branch:
         neck_shape = UNet(neck_inplanes, 256, 3)
         volume_head_obj = ConvHead([256, 1 * 64], kernel=1, stride=1, padding=0, bnrelu_final=False)
-        if cfg.obj_rot:
+        if cfg.MODEL.obj_rot:
             if cfg.rot_style == 'axisang':
                 rot_head_obj = FCHead(out_dim=3)
             elif cfg.rot_style == '6d':
@@ -260,13 +260,13 @@ def get_model(cfg, is_train):
         volume_head_obj = None
         rot_head_obj = None
 
-    if cfg.hand_branch:
-        hand_sdf_head = SDFHead(cfg.sdf_latent, cfg.hand_point_latent, cfg.sdf_head['dims'], cfg.sdf_head['dropout'], cfg.sdf_head['dropout_prob'], cfg.sdf_head['norm_layers'], cfg.sdf_head['latent_in'], cfg.hand_cls, cfg.sdf_head['num_class'])
+    if cfg.MODEL.hand_branch:
+        hand_sdf_head = SDFHead(cfg.MODEL.sdf_latent, cfg.MODEL.hand_point_latent, cfg.MODEL.sdf_head['dims'], cfg.MODEL.sdf_head['dropout'], cfg.MODEL.sdf_head['dropout_prob'], cfg.MODEL.sdf_head['norm_layers'], cfg.MODEL.sdf_head['latent_in'], cfg.MODEL.hand_cls, cfg.MODEL.sdf_head['num_class'])
     else:
         hand_sdf_head = None
     
-    if cfg.obj_branch:
-        obj_sdf_head = SDFHead(cfg.sdf_latent, cfg.obj_point_latent, cfg.sdf_head['dims'], cfg.sdf_head['dropout'], cfg.sdf_head['dropout_prob'], cfg.sdf_head['norm_layers'], cfg.sdf_head['latent_in'], False, cfg.sdf_head['num_class'])
+    if cfg.MODEL.obj_branch:
+        obj_sdf_head = SDFHead(cfg.MODEL.sdf_latent, cfg.MODEL.obj_point_latent, cfg.MODEL.sdf_head['dims'], cfg.MODEL.sdf_head['dropout'], cfg.MODEL.sdf_head['dropout_prob'], cfg.MODEL.sdf_head['norm_layers'], cfg.MODEL.sdf_head['latent_in'], False, cfg.MODEL.sdf_head['num_class'])
     else:
         obj_sdf_head = None
     

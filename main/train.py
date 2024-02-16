@@ -10,7 +10,8 @@ from lib.utils.dir_utils import export_pose_results
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', '-e', required=True, type=str)
+    # parser.add_argument('--cfg', '-e', required=True, type=str)
+    parser.add_argument('--cfg', type=str, help='experiment configure file name')
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
     parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -32,9 +33,9 @@ def main():
     args = parse_args()
     
     add_path(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib', 'models'))
-    from config import cfg, update_config
+    from lib.core.config import cfg, update_config
     from lib.core.base import Trainer, Tester
-    update_config(cfg, args)
+    update_config(args.cfg, args)
 
     cudnn.benchmark = True
     writer_dict = {'writer': SummaryWriter(log_dir = cfg.log_dir), 'train_global_steps': 0}
@@ -44,7 +45,7 @@ def main():
     trainer._make_model()
 
     # train
-    for epoch in range(trainer.start_epoch, cfg.end_epoch):
+    for epoch in range(trainer.start_epoch, cfg.TRAIN.end_epoch):
         trainer.tot_timer.tic()
         trainer.read_timer.tic()
 
@@ -92,7 +93,7 @@ def main():
 
             trainer.gpu_timer.toc()
             screen = [
-                'Epoch %d/%d itr %d/%d:' % (epoch, cfg.end_epoch, itr, trainer.itr_per_epoch),
+                'Epoch %d/%d itr %d/%d:' % (epoch, cfg.TRAIN.end_epoch, itr, trainer.itr_per_epoch),
                 'lr: %g' % (trainer.get_lr()),
                 'speed: %.2f(%.2fs r%.2f)s/itr' % (trainer.tot_timer.average_time, trainer.gpu_timer.average_time, trainer.read_timer.average_time),
                 '%.2fs/epoch' % (trainer.tot_timer.average_time * trainer.itr_per_epoch),
@@ -117,7 +118,7 @@ def main():
             trainer.tot_timer.tic()
             trainer.read_timer.tic()
         
-        if (epoch % cfg.model_save_freq == 0 or epoch == cfg.end_epoch - 1):
+        if (epoch % cfg.model_save_freq == 0 or epoch == cfg.TRAIN.end_epoch - 1):
             trainer.save_model({
                 'epoch': epoch,
                 'network': trainer.model.state_dict(),

@@ -13,11 +13,11 @@ class BaseDataset(Dataset):
         self.joints_name = db.joints_name
         self.inria_aug_source = db.inria_aug_source
 
-        self.hand_branch = cfg.hand_branch
-        self.obj_branch = cfg.obj_branch
+        self.hand_branch = cfg.MODEL.hand_branch
+        self.obj_branch = cfg.MODEL.obj_branch
         self.original_image_size = db.image_size
-        self.input_image_size = cfg.image_size
-        self.use_inria_aug = cfg.use_inria_aug
+        self.input_image_size = cfg.TRAIN.image_size
+        self.use_inria_aug = cfg.TRAIN.use_inria_aug
         self.image_transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.ToTensor(),

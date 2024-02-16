@@ -15,7 +15,7 @@ import torch
 from loguru import logger
 import _init_paths
 from _init_paths import add_path, this_dir
-from utils.dir_utils import export_pose_results
+from lib.utils.dir_utils import export_pose_results
 
 
 def parse_args():
@@ -44,11 +44,11 @@ def main():
     args = parse_args()
     task = args.cfg.split('/')[-3]
     add_path(os.path.join('../lib', 'models'))
-    from config import cfg, update_config
-    update_config(cfg, args, mode='test')
+    from lib.core.config import cfg, update_config
+    update_config(args.cfg, args, mode='test')
     from lib.core.base import Tester
     if args.test_epoch == 0:
-        args.test_epoch = cfg.end_epoch - 1
+        args.test_epoch = cfg.TRAIN.end_epoch - 1
 
     tester = Tester(args.test_epoch)
     tester._make_batch_generator()

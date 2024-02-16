@@ -14,18 +14,18 @@ def pixel_align(cfg, input_xyz_points, num_points_per_scene, feature_maps, hand_
     input_points = input_xyz_points.clone()
     input_points = input_points.reshape((-1, num_points_per_scene, 3))
     batch_size = input_points.shape[0]
-    xyz = input_points * 2 / cfg.recon_scale + hand_center_3d.unsqueeze(1)
+    xyz = input_points * 2 / cfg.TRAIN.recon_scale + hand_center_3d.unsqueeze(1)
     homo_xyz = homoify(xyz)
     homo_xyz_2d = torch.matmul(cam_intr, homo_xyz.transpose(1, 2)).transpose(1, 2)
     xyz_2d = (homo_xyz_2d[:, :, :2] / homo_xyz_2d[:, :, [2]]).unsqueeze(2)
-    uv_2d = xyz_2d / cfg.image_size[0] * 2 - 1
+    uv_2d = xyz_2d / cfg.TRAIN.image_size[0] * 2 - 1
     sample_feat = torch.nn.functional.grid_sample(feature_maps, uv_2d, align_corners=True)[:, :, :, 0].transpose(1, 2)
     uv_2d = uv_2d.squeeze(2).reshape((-1, 2))
     sample_feat = sample_feat.reshape((uv_2d.shape[0], -1))
     validity = (uv_2d[:, 0] >= -1.0) & (uv_2d[:, 0] <= 1.0) & (uv_2d[:, 1] >= -1.0) & (uv_2d[:, 1] <= 1.0)
     validity = validity.unsqueeze(1)
 
-    if cfg.with_add_feats:
+    if cfg.MODEL.with_add_feats:
         depth_feat = xyz.reshape((-1, 3))[:, [-1]]
         view_dir_feat = F.normalize(xyz.reshape((-1, 3)), p=2, dim=1)
         sample_feat = torch.cat([sample_feat, depth_feat, view_dir_feat], axis=1)
@@ -47,7 +47,7 @@ def kinematic_embedding(cfg, input_points, num_points_per_scene, pose_results, m
         inv_func = torch.inverse
     
     if 'hand' in mode:
-        xyz = (input_points * 2 / cfg.recon_scale).unsqueeze(2)
+        xyz = (input_points * 2 / cfg.TRAIN.recon_scale).unsqueeze(2)
         global_trans = pose_results['global_trans']
 
         xyz_mano = xyz.unsqueeze(2)
@@ -72,9 +72,9 @@ def kinematic_embedding(cfg, input_points, num_points_per_scene, pose_results, m
         
         point_embedding = torch.cat([xyz_mano.squeeze(2), inv_xyz_mano], 2)
         point_embedding = point_embedding.reshape((batch_size, num_points_per_scene, -1))
-        point_embedding = point_embedding * cfg.recon_scale / 2
+        point_embedding = point_embedding * cfg.TRAIN.recon_scale / 2
     else:
-        xyz = (input_points * 2 / cfg.recon_scale)
+        xyz = (input_points * 2 / cfg.TRAIN.recon_scale)
         obj_trans = pose_results['global_trans']
         homo_xyz_obj = homoify(xyz)
         inv_obj_trans = inv_func(obj_trans)
@@ -111,6 +111,6 @@ def kinematic_embedding(cfg, input_points, num_points_per_scene, pose_results, m
             point_embedding = torch.cat(inv_xyz_joint, 2)
                 
         point_embedding = point_embedding.reshape((batch_size, num_points_per_scene, -1))
-        point_embedding = point_embedding * cfg.recon_scale / 2
+        point_embedding = point_embedding * cfg.TRAIN.recon_scale / 2
 
     return point_embedding

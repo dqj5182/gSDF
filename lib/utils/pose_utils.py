@@ -22,9 +22,9 @@ def soft_argmax(cfg, heatmaps, num_joints):
     accu_y = heatmaps.sum(dim=(2, 4))
     accu_z = heatmaps.sum(dim=(3, 4))
 
-    accu_x = accu_x * torch.arange(cfg.heatmap_size[1]).float().cuda()[None, None, :]
-    accu_y = accu_y * torch.arange(cfg.heatmap_size[0]).float().cuda()[None, None, :]
-    accu_z = accu_z * torch.arange(cfg.heatmap_size[2]).float().cuda()[None, None, :]
+    accu_x = accu_x * torch.arange(cfg.TRAIN.heatmap_size[1]).float().cuda()[None, None, :]
+    accu_y = accu_y * torch.arange(cfg.TRAIN.heatmap_size[0]).float().cuda()[None, None, :]
+    accu_z = accu_z * torch.arange(cfg.TRAIN.heatmap_size[2]).float().cuda()[None, None, :]
 
     accu_x = accu_x.sum(dim=2, keepdim=True)
     accu_y = accu_y.sum(dim=2, keepdim=True)
@@ -37,9 +37,9 @@ def soft_argmax(cfg, heatmaps, num_joints):
 
 def decode_volume(cfg, heatmaps, center3d, cam_intr):
     hm_pred = heatmaps.clone()
-    hm_pred[:, :, 0] *= (cfg.image_size[1] // cfg.heatmap_size[1])
-    hm_pred[:, :, 1] *= (cfg.image_size[0] // cfg.heatmap_size[0])
-    hm_pred[:, :, 2] = (hm_pred[:, :, 2] / cfg.heatmap_size[2] * 2 - 1) * cfg.depth_dim + center3d[:, [2]]
+    hm_pred[:, :, 0] *= (cfg.TRAIN.image_size[1] // cfg.TRAIN.heatmap_size[1])
+    hm_pred[:, :, 1] *= (cfg.TRAIN.image_size[0] // cfg.TRAIN.heatmap_size[0])
+    hm_pred[:, :, 2] = (hm_pred[:, :, 2] / cfg.TRAIN.heatmap_size[2] * 2 - 1) * cfg.TRAIN.depth_dim + center3d[:, [2]]
 
     fx = cam_intr[:, 0, 0].unsqueeze(1)
     fy = cam_intr[:, 1, 1].unsqueeze(1)
@@ -57,9 +57,9 @@ def decode_volume(cfg, heatmaps, center3d, cam_intr):
 def decode_volume_abs(cfg, heatmaps, cam_intr):
     # please refer to the paper "Hand Pose Estimation via Latent 2.5D Heatmap Regression" for more details.
     norm_coords = heatmaps.clone()
-    norm_coords[:, :, 0] *= (cfg.image_size[1] // cfg.heatmap_size[1])
-    norm_coords[:, :, 1] *= (cfg.image_size[0] // cfg.heatmap_size[0])
-    norm_coords[:, :, 2] = (norm_coords[:, :, 2] / cfg.heatmap_size[2] * 2 - 1) * cfg.depth_dim
+    norm_coords[:, :, 0] *= (cfg.TRAIN.image_size[1] // cfg.TRAIN.heatmap_size[1])
+    norm_coords[:, :, 1] *= (cfg.TRAIN.image_size[0] // cfg.TRAIN.heatmap_size[0])
+    norm_coords[:, :, 2] = (norm_coords[:, :, 2] / cfg.TRAIN.heatmap_size[2] * 2 - 1) * cfg.TRAIN.depth_dim
 
     fx, fy = cam_intr[:, 0, 0], cam_intr[:, 1, 1]
     cx, cy = cam_intr[:, 0, 2], cam_intr[:, 1, 2]
@@ -70,7 +70,7 @@ def decode_volume_abs(cfg, heatmaps, cam_intr):
 
     a = (x_n - x_m) ** 2 + (y_n - y_m) ** 2
     b = 2 * (x_n - x_m) * (x_n * z_n - x_m * z_m) + 2 * (y_n - y_m) * (y_n * z_n - y_m * z_m)
-    c = (x_n * z_n - x_m * z_m) ** 2 + (y_n * z_n - y_m * z_m) ** 2 + (z_n - z_m) ** 2 - cfg.norm_factor ** 2
+    c = (x_n * z_n - x_m * z_m) ** 2 + (y_n * z_n - y_m * z_m) ** 2 + (z_n - z_m) ** 2 - cfg.TRAIN.norm_factor ** 2
 
     z_root = 0.5 * (-b + torch.sqrt(b ** 2 - 4 * a * c)) / (a + 1e-7)
 

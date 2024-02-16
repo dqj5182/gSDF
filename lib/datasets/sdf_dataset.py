@@ -11,9 +11,9 @@ from kornia.geometry.conversions import rotation_matrix_to_angle_axis, angle_axi
 class SDFDataset(BaseDataset):
     def __init__(self, db, cfg, mode='train'):
         super(SDFDataset, self).__init__(db, cfg, mode)
-        self.num_sample_points = cfg.num_sample_points
-        self.recon_scale = cfg.recon_scale
-        self.clamp = cfg.clamp_dist
+        self.num_sample_points = cfg.TRAIN.num_sample_points
+        self.recon_scale = cfg.TRAIN.recon_scale
+        self.clamp = cfg.TRAIN.clamp_dist
 
     def __getitem__(self, index):
         sample_data = copy.deepcopy(self.db[index])
