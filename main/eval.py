@@ -16,10 +16,9 @@ import shutil
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dir', '-e', required=True, type=str)
+    parser.add_argument('--exp_dir', required=True, type=str)
     parser.add_argument('--num_proc', default=10, type=int)
     args = parser.parse_args()
-
     return args
 
 
@@ -32,12 +31,11 @@ def evaluate(queue, db, output_dir):
 def main():
     # argument parse and create log
     args = parse_args()
-    # testset = args.dir.strip('/').split('/')[-1].split('_')[1]
-    if 'obman' in args.dir:
-        testset = 'obman'
-    elif 'dexycb' in args.dir:
-        testset =  'dexycb'
-    exec(f'from data.{testset}.{testset} import {testset}')
+    if 'obman' in args.exp_dir:
+        testset = 'ObMan'
+    elif 'dexycb' in args.exp_dir:
+        testset =  'DexYCB'
+    exec(f'from data.{testset}.dataset import {testset}')
     if testset == 'obman':
         data_root = '../data/obman/data/'
         rgb_source = '../data/obman/data/test/rgb/'
@@ -49,7 +47,7 @@ def main():
         mesh_hand_source = '../data/dexycb/data/mesh_data/mesh_hand/'
         mesh_obj_source = '../data/dexycb/data/mesh_data/mesh_obj/'
 
-    with open(os.path.join(args.dir, 'exp.yaml'), 'r') as f:
+    with open(os.path.join(args.exp_dir, 'exp.yaml'), 'r') as f:
         cfg = yaml.safe_load(f)
 
     start_points = []
@@ -68,7 +66,7 @@ def main():
     process_list = []
     for i in range(args.num_proc):
         testset_db = eval(testset)('test_' + cfg['testset_split'], start_points[i], end_points[i])
-        p = Process(target=evaluate, args=(queue, testset_db, args.dir))
+        p = Process(target=evaluate, args=(queue, testset_db, args.exp_dir))
         p.start()
         process_list.append(p)
 
@@ -85,7 +83,7 @@ def main():
     summary = sorted(summary, reverse=False, key=lambda result: result[0])
     summary_filename = "eval_result.txt"
 
-    with open(os.path.join(args.dir, summary_filename), "w") as f:
+    with open(os.path.join(args.exp_dir, summary_filename), "w") as f:
         eval_result = [[] for i in range(9)]
         name_list = ['sample_id', 'chamfer hand', 'fs_hand@1mm', 'fs_hand@5mm', 'chamfer obj', 'fs_obj@5mm', 'fs_obj@10mm', 'hand joint', 'obj center', 'obj corner']
         data_list = []
@@ -131,10 +129,10 @@ def main():
         print(mean_obj_center_err); f.write(mean_obj_center_err)
         print(mean_obj_corner_err); f.write(mean_obj_corner_err)
 
-        worst_hand_dir = os.path.join(args.dir, 'worst_hand'); os.makedirs(worst_hand_dir, exist_ok=True)
-        best_hand_dir = os.path.join(args.dir, 'best_hand'); os.makedirs(best_hand_dir, exist_ok=True)
-        best_obj_dir = os.path.join(args.dir, 'best_obj'); os.makedirs(best_obj_dir, exist_ok=True)
-        worst_obj_dir = os.path.join(args.dir, 'worst_obj'); os.makedirs(worst_obj_dir, exist_ok=True)
+        worst_hand_dir = os.path.join(args.exp_dir, 'worst_hand'); os.makedirs(worst_hand_dir, exist_ok=True)
+        best_hand_dir = os.path.join(args.exp_dir, 'best_hand'); os.makedirs(best_hand_dir, exist_ok=True)
+        best_obj_dir = os.path.join(args.exp_dir, 'best_obj'); os.makedirs(best_obj_dir, exist_ok=True)
+        worst_obj_dir = os.path.join(args.exp_dir, 'worst_obj'); os.makedirs(worst_obj_dir, exist_ok=True)
 
         # begin to handle the hand case
         summary_hand = []
@@ -174,10 +172,10 @@ def main():
                         gt_mesh_fuse = trimesh.util.concatenate(gt_mesh_hand, gt_mesh_obj)
                         gt_mesh_fuse.export(os.path.join(sample_dir, sample_id + '_gt_fuse.glb'))
 
-                    mesh_hand = trimesh.load(os.path.join(args.dir, 'sdf_mesh', sample_id + '_hand.ply'), process=False)
+                    mesh_hand = trimesh.load(os.path.join(args.exp_dir, 'sdf_mesh', sample_id + '_hand.ply'), process=False)
                     mesh_hand.export(os.path.join(sample_dir, sample_id + '_hand.glb'))
                     try:
-                        mesh_obj = trimesh.load(os.path.join(args.dir, 'sdf_mesh', sample_id + '_obj.ply'), process=False)
+                        mesh_obj = trimesh.load(os.path.join(args.exp_dir, 'sdf_mesh', sample_id + '_obj.ply'), process=False)
                         mesh_obj.export(os.path.join(sample_dir, sample_id + '_obj.glb'))
                         mesh_fuse = trimesh.util.concatenate(mesh_hand, mesh_obj)
                         mesh_fuse.export(os.path.join(sample_dir, sample_id + '_fuse.glb'))
@@ -221,10 +219,10 @@ def main():
                         gt_mesh_fuse = trimesh.util.concatenate(gt_mesh_hand, gt_mesh_obj)
                         gt_mesh_fuse.export(os.path.join(sample_dir, sample_id + '_gt_fuse.glb'))
 
-                    mesh_obj = trimesh.load(os.path.join(args.dir, 'sdf_mesh', sample_id + '_obj.ply'), process=False)
+                    mesh_obj = trimesh.load(os.path.join(args.exp_dir, 'sdf_mesh', sample_id + '_obj.ply'), process=False)
                     mesh_obj.export(os.path.join(sample_dir, sample_id + '_obj.glb'))
                     try:
-                        mesh_hand = trimesh.load(os.path.join(args.dir, 'sdf_mesh', sample_id + '_hand.ply'), process=False)
+                        mesh_hand = trimesh.load(os.path.join(args.exp_dir, 'sdf_mesh', sample_id + '_hand.ply'), process=False)
                         mesh_hand.export(os.path.join(sample_dir, sample_id + '_hand.glb'))
                         mesh_fuse = trimesh.util.concatenate(mesh_hand, mesh_obj)
                         mesh_fuse.export(os.path.join(sample_dir, sample_id + '_fuse.glb'))
