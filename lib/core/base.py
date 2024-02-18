@@ -125,6 +125,109 @@ class Trainer(BaseTrainer):
         self.model = model
         self.optimizer = optimizer
 
+    def run(self, writer_dict):
+        # train
+        for epoch in range(self.start_epoch, cfg.TRAIN.end_epoch):
+            self.tot_timer.tic()
+            self.read_timer.tic()
+
+            for itr, (inputs, targets, metas) in enumerate(self.batch_generator):
+                self.set_lr(epoch, itr)
+                self.read_timer.toc()
+                self.gpu_timer.tic()
+
+                # inputs
+                for k, v in inputs.items():
+                    if isinstance(v, list):
+                        for i in range(len(v)):
+                            inputs[k][i] = inputs[k][i].cuda(non_blocking=True)
+                    else:
+                        inputs[k] = inputs[k].cuda(non_blocking=True)
+
+                # targets
+                for k, v in targets.items():
+                    if isinstance(v, list):
+                        for i in range(len(v)):
+                            targets[k][i] = targets[k][i].cuda(non_blocking=True)
+                    else:
+                        targets[k] = targets[k].cuda(non_blocking=True)
+
+                # meta infos
+                metas['epoch'] = epoch
+                for k, v in metas.items():
+                    if k != 'id' and k != 'epoch' and k != 'obj_id':
+                        if isinstance(v, list):
+                            for i in range(len(v)):
+                                metas[k][i] = metas[k][i].cuda(non_blocking=True)
+                        else:
+                            metas[k] = metas[k].cuda(non_blocking=True)
+
+                # forward
+                self.optimizer.zero_grad()
+                sdf_results, hand_pose_results, obj_pose_results, inter_results, processed_gt = self.model(inputs, targets, metas, 'train')
+
+                # loss
+                loss_l1 = torch.nn.L1Loss(reduction='sum')
+                loss_l2 = torch.nn.MSELoss()
+                loss_ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
+                loss = {}
+                loss['hand_sdf'] = cfg.TRAIN.hand_sdf_weight * loss_l1(sdf_results['hand'] * inter_results['mask_hand'], processed_gt['sdf_gt_hand'] * inter_results['mask_hand']) / inter_results['mask_hand'].sum()
+                loss['obj_sdf'] = cfg.TRAIN.obj_sdf_weight * loss_l1(sdf_results['obj'] * inter_results['mask_obj'], processed_gt['sdf_gt_obj'] * inter_results['mask_obj']) / inter_results['mask_obj'].sum()
+                
+                loss['volume_joint'] = cfg.TRAIN.volume_weight * loss_l2(obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
+
+                if cfg.MODEL.obj_rot and cfg.TRAIN.corner_weight > 0:
+                    loss['obj_corners'] = cfg.TRAIN.corner_weight * loss_l2(obj_pose_results['corners'], targets['obj_corners_3d'])
+
+                if sdf_results['cls_hand'] is not None:
+                    if metas['epoch'] >= cfg.TRAIN.sdf_add_epoch:
+                        loss['hand_cls'] = cfg.TRAIN.hand_cls_weight * loss_ce(sdf_results['cls_hand'], processed_gt['cls_data'])
+                    else:
+                        loss['hand_cls'] = 0. * loss_ce(sdf_results['cls_hand'], processed_gt['cls_data'])
+
+                # backward
+                all_loss = sum(loss[k].mean() for k in loss)
+                all_loss.backward()
+
+                self.optimizer.step()
+                torch.cuda.synchronize()
+
+                self.gpu_timer.toc()
+                screen = [
+                    'Epoch %d/%d itr %d/%d:' % (epoch, cfg.TRAIN.end_epoch, itr, self.itr_per_epoch),
+                    'lr: %g' % (self.get_lr()),
+                    'speed: %.2f(%.2fs r%.2f)s/itr' % (self.tot_timer.average_time, self.gpu_timer.average_time, self.read_timer.average_time),
+                    '%.2fs/epoch' % (self.tot_timer.average_time * self.itr_per_epoch),
+                    ]
+
+                # save
+                record_dict = {}
+                for k, v in loss.items():
+                    record_dict[k] = v.detach().mean() * 1000.
+                screen += ['%s: %.3f' % ('loss_' + k, v) for k, v in record_dict.items()]
+
+                tb_writer = writer_dict['writer']
+                global_steps = writer_dict['train_global_steps']
+                if itr % 10 == 0:
+                    self.logger.info(' '.join(screen))
+                    for k, v in record_dict.items():
+                        tb_writer.add_scalar('loss_' + k, v, global_steps)
+                    tb_writer.add_scalar('lr', self.get_lr(), global_steps)
+                    writer_dict['train_global_steps'] = global_steps + 10
+
+                self.tot_timer.toc()
+                self.tot_timer.tic()
+                self.read_timer.tic()
+            
+            if (epoch % cfg.model_save_freq == 0 or epoch == cfg.TRAIN.end_epoch - 1):
+                self.save_model({
+                    'epoch': epoch,
+                    'network': self.model.state_dict(),
+                    'optimizer': self.optimizer.state_dict(),
+                }, epoch)
+                writer_dict['writer'].close()
+
 
 class Tester(BaseTester):
     def __init__(self, test_epoch):
