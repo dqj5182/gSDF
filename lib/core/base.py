@@ -15,8 +15,7 @@ from model import get_model
 from lib.datasets.sdf_dataset import SDFDataset
 
 
-class Base(object):
-    __metaclass__ = abc.ABCMeta
+class BaseTrainer:
     def __init__(self, log_name ='logs.txt'):
         self.cur_epoch = 0
         # timer
@@ -27,16 +26,22 @@ class Base(object):
         self.logger = logger
         self.logger.add(osp.join(cfg.log_dir, log_name))
 
-    @abc.abstractmethod
-    def _make_batch_generator(self):
-        return
-
-    @abc.abstractmethod
-    def _make_model(self):
-        return
+        self.loss = prepare_criterion()
 
 
-class Trainer(Base):
+class BaseTester:
+    def __init__(self, log_name ='logs.txt'):
+        self.cur_epoch = 0
+        # timer
+        self.tot_timer = Timer()
+        self.gpu_timer = Timer()
+        self.read_timer = Timer()
+        # logger
+        self.logger = logger
+        self.logger.add(osp.join(cfg.log_dir, log_name))
+
+
+class Trainer(BaseTrainer):
     def __init__(self):
         super(Trainer, self).__init__(log_name = 'train_logs.txt')
 
@@ -94,7 +99,6 @@ class Trainer(Base):
         return self.optimizer.param_groups[0]['lr']
     
     def _make_batch_generator(self):
-        # data load and construct batch generator
         self.logger.info("Creating dataset...")
         exec(f'from data.{cfg.DATASET.trainset_3d}.dataset import {cfg.DATASET.trainset_3d}')
         trainset3d_db = eval(cfg.DATASET.trainset_3d)('train_' + cfg.DATASET.trainset_3d_split)
@@ -103,7 +107,6 @@ class Trainer(Base):
         self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.TRAIN.train_batch_size * cfg.OTHERS.num_gpus, shuffle=False, num_workers=cfg.OTHERS.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
 
     def _make_model(self):
-        # prepare network
         self.logger.info("Creating graph and optimizer...")
         model = get_model(cfg, True)
         model = model.cuda()
@@ -123,9 +126,8 @@ class Trainer(Base):
         self.optimizer = optimizer
 
 
-class Tester(Base):
+class Tester(BaseTester):
     def __init__(self, test_epoch):
-        # self.local_rank = local_rank
         self.test_epoch = test_epoch
         super(Tester, self).__init__(log_name = 'test_logs.txt')
 
@@ -152,3 +154,23 @@ class Tester(Base):
         model.eval()
 
         self.model = model
+
+
+def prepare_network(args, load_dir='', is_train=True): 
+    from lib.models.model import get_model  
+    model = get_model(is_train)
+    if load_dir and (not is_train or args.resume_training):
+        checkpoint = load_checkpoint(load_dir=load_dir)
+        try:
+            model.load_weights(checkpoint['model_state_dict'])
+        except:
+            model.load_weights(checkpoint)
+    else:
+        checkpoint = None
+    return model, checkpoint
+    
+
+def prepare_criterion():
+    from lib.core.loss import get_loss
+    criterion = get_loss()
+    return criterion

@@ -6,57 +6,24 @@ import numpy as np
 from itertools import combinations, product
 
 
-def partlevel_ordinal_relation(ppair: torch.Tensor, view_vecs: torch.Tensor):
-    """
-    Args:
-        ppair: TENSOR (B, NPPAIRS, 6)
-        view_vecs: TENSOR (B, NVIEWS, 3)
-    Returns:
-        ppair_ord: TENSOR (B, NPPAIRS, NVIEWS, 1)
-    """
+class ParamLoss(nn.Module):
+    def __init__(self, type='l1'):
+        super(ParamLoss, self).__init__()        
+        if type == 'l1': self.criterion = nn.L1Loss(reduction='sum')
+        elif type == 'l2': self.criterion = nn.MSELoss()
 
-    nviews = view_vecs.shape[1]
-    npairs = ppair.shape[1]
-    ppair = ppair.unsqueeze(2).expand(-1, -1, nviews, -1)  # (B, NPPAIRS, NVIEWS, 6)
-    view_vecs = view_vecs.unsqueeze(1).expand(-1, npairs, -1, -1)  # (B, NPPAIRS, NVIEWS, 3)
-    ppair_cross = torch.cross(ppair[..., :3], ppair[..., 3:])  # (B, NPPAIRS, NVIEWS, 3)
-    ppair_ord = torch.einsum("bijk, bijk->bij", ppair_cross, view_vecs)  # (B, NPPAIRS, NVIEWS)
-
-    return ppair_ord.unsqueeze(-1)  # (B, NPPAIRS, NVIEWS, 1)
+    def forward(self, param_out, param_gt, valid=None):        
+        return self.criterion(param_out, param_gt)
 
 
-def jointlevel_ordinal_relation(jpair: torch.Tensor, view_vecs: torch.Tensor):
-    """
-    Args:
-        jpair: TENSOR (B, NPAIRS, 6)
-        view_vecs: TENSOR (B, NVIEWS, 3)
-    Returns:
-        jpair_ord: TENSOR (B, NPAIRS, NVIEWS, 1)
-    """
+class CLSLoss(nn.Module):
+    def __init__(self):
+        super(CLSLoss, self).__init__()
+        self.ce_loss = nn.CrossEntropyLoss(ignore_index=-1)
 
-    nviews = view_vecs.shape[1]
-    npairs = jpair.shape[1]
-    jpair = jpair.unsqueeze(2).expand(-1, -1, nviews, -1)  # (B, NPAIRS, NVIEWS, 6)
-    view_vecs = view_vecs.unsqueeze(1).expand(-1, npairs, -1, -1)  # (B, NPAIRS, NVIEWS, 3)
-    jpair_diff = jpair[..., :3] - jpair[..., 3:]  # (B, NPAIRS, NVIEWS, 3)
-    jpair_ord = torch.einsum("bijk, bijk->bij", jpair_diff, view_vecs)  # (B, NPAIRS, NVIEWS)
-
-    return jpair_ord.unsqueeze(-1)  # (B, NPAIRS, NVIEWS, 1)
-
-
-def sample_view_vectors(n_virtual_views=20):
-    cam_vec = torch.Tensor([0.0, 0.0, 1.0]).unsqueeze(0)  # TENSOR (1, NVIEWS)
-    theta = torch.rand(n_virtual_views) * 2.0 * np.pi  # TENSSOR (NVIEWS, )
-    u = torch.rand(n_virtual_views)
-
-    nv_x = torch.sqrt(1.0 - u ** 2) * torch.cos(theta)  # TENSSOR (NVIEWS, )
-    nv_y = torch.sqrt(1.0 - u ** 2) * torch.sin(theta)  # TENSSOR (NVIEWS, )
-    nv_z = u  # TENSSOR (NVIEWS, )
-
-    nv = torch.cat([nv_x.unsqueeze(1), nv_y.unsqueeze(1), nv_z.unsqueeze(1)], dim=1)  # TENSSOR (NVIEWS, 3)
-    nv = torch.cat([cam_vec, nv], dim=0)  # TENSOR (NVIEWS, 3)
-
-    return nv
+    def forward(self, pred, target):
+        loss = self.ce_loss(pred, target.float())
+        return loss
 
 
 class HandOrdLoss(nn.Module):
@@ -117,6 +84,57 @@ class HandOrdLoss(nn.Module):
         jpairs = torch.cat([pairs_joints1, pairs_joints2], dim=2)  # (B, NPAIRS, 6)
 
         return jpairs
+
+    def partlevel_ordinal_relation(ppair: torch.Tensor, view_vecs: torch.Tensor):
+        """
+        Args:
+            ppair: TENSOR (B, NPPAIRS, 6)
+            view_vecs: TENSOR (B, NVIEWS, 3)
+        Returns:
+            ppair_ord: TENSOR (B, NPPAIRS, NVIEWS, 1)
+        """
+
+        nviews = view_vecs.shape[1]
+        npairs = ppair.shape[1]
+        ppair = ppair.unsqueeze(2).expand(-1, -1, nviews, -1)  # (B, NPPAIRS, NVIEWS, 6)
+        view_vecs = view_vecs.unsqueeze(1).expand(-1, npairs, -1, -1)  # (B, NPPAIRS, NVIEWS, 3)
+        ppair_cross = torch.cross(ppair[..., :3], ppair[..., 3:])  # (B, NPPAIRS, NVIEWS, 3)
+        ppair_ord = torch.einsum("bijk, bijk->bij", ppair_cross, view_vecs)  # (B, NPPAIRS, NVIEWS)
+
+        return ppair_ord.unsqueeze(-1)  # (B, NPPAIRS, NVIEWS, 1)
+
+    def jointlevel_ordinal_relation(jpair: torch.Tensor, view_vecs: torch.Tensor):
+        """
+        Args:
+            jpair: TENSOR (B, NPAIRS, 6)
+            view_vecs: TENSOR (B, NVIEWS, 3)
+        Returns:
+            jpair_ord: TENSOR (B, NPAIRS, NVIEWS, 1)
+        """
+
+        nviews = view_vecs.shape[1]
+        npairs = jpair.shape[1]
+        jpair = jpair.unsqueeze(2).expand(-1, -1, nviews, -1)  # (B, NPAIRS, NVIEWS, 6)
+        view_vecs = view_vecs.unsqueeze(1).expand(-1, npairs, -1, -1)  # (B, NPAIRS, NVIEWS, 3)
+        jpair_diff = jpair[..., :3] - jpair[..., 3:]  # (B, NPAIRS, NVIEWS, 3)
+        jpair_ord = torch.einsum("bijk, bijk->bij", jpair_diff, view_vecs)  # (B, NPAIRS, NVIEWS)
+
+        return jpair_ord.unsqueeze(-1)  # (B, NPAIRS, NVIEWS, 1)
+
+
+    def sample_view_vectors(n_virtual_views=20):
+        cam_vec = torch.Tensor([0.0, 0.0, 1.0]).unsqueeze(0)  # TENSOR (1, NVIEWS)
+        theta = torch.rand(n_virtual_views) * 2.0 * np.pi  # TENSSOR (NVIEWS, )
+        u = torch.rand(n_virtual_views)
+
+        nv_x = torch.sqrt(1.0 - u ** 2) * torch.cos(theta)  # TENSSOR (NVIEWS, )
+        nv_y = torch.sqrt(1.0 - u ** 2) * torch.sin(theta)  # TENSSOR (NVIEWS, )
+        nv_z = u  # TENSSOR (NVIEWS, )
+
+        nv = torch.cat([nv_x.unsqueeze(1), nv_y.unsqueeze(1), nv_z.unsqueeze(1)], dim=1)  # TENSSOR (NVIEWS, 3)
+        nv = torch.cat([cam_vec, nv], dim=0)  # TENSOR (NVIEWS, 3)
+
+        return nv
 
     def forward(self, pred_joints, gt_joints):
         batch_size = pred_joints.shape[0]
@@ -190,6 +208,39 @@ class SceneOrdLoss(nn.Module):
 
         return ho_pairs
 
+    def jointlevel_ordinal_relation(jpair: torch.Tensor, view_vecs: torch.Tensor):
+        """
+        Args:
+            jpair: TENSOR (B, NPAIRS, 6)
+            view_vecs: TENSOR (B, NVIEWS, 3)
+        Returns:
+            jpair_ord: TENSOR (B, NPAIRS, NVIEWS, 1)
+        """
+
+        nviews = view_vecs.shape[1]
+        npairs = jpair.shape[1]
+        jpair = jpair.unsqueeze(2).expand(-1, -1, nviews, -1)  # (B, NPAIRS, NVIEWS, 6)
+        view_vecs = view_vecs.unsqueeze(1).expand(-1, npairs, -1, -1)  # (B, NPAIRS, NVIEWS, 3)
+        jpair_diff = jpair[..., :3] - jpair[..., 3:]  # (B, NPAIRS, NVIEWS, 3)
+        jpair_ord = torch.einsum("bijk, bijk->bij", jpair_diff, view_vecs)  # (B, NPAIRS, NVIEWS)
+
+        return jpair_ord.unsqueeze(-1)  # (B, NPAIRS, NVIEWS, 1)
+
+
+    def sample_view_vectors(n_virtual_views=20):
+        cam_vec = torch.Tensor([0.0, 0.0, 1.0]).unsqueeze(0)  # TENSOR (1, NVIEWS)
+        theta = torch.rand(n_virtual_views) * 2.0 * np.pi  # TENSSOR (NVIEWS, )
+        u = torch.rand(n_virtual_views)
+
+        nv_x = torch.sqrt(1.0 - u ** 2) * torch.cos(theta)  # TENSSOR (NVIEWS, )
+        nv_y = torch.sqrt(1.0 - u ** 2) * torch.sin(theta)  # TENSSOR (NVIEWS, )
+        nv_z = u  # TENSSOR (NVIEWS, )
+
+        nv = torch.cat([nv_x.unsqueeze(1), nv_y.unsqueeze(1), nv_z.unsqueeze(1)], dim=1)  # TENSSOR (NVIEWS, 3)
+        nv = torch.cat([cam_vec, nv], dim=0)  # TENSOR (NVIEWS, 3)
+
+        return nv
+
     def forward(self, pred_joints, pred_corners, gt_joints, gt_corners):
         batch_size = pred_joints.shape[0]
         device = pred_joints.device
@@ -214,3 +265,13 @@ class SceneOrdLoss(nn.Module):
         scene_ord_loss = torch.mean(scene_ord_loss_)
 
         return scene_ord_loss
+
+
+def get_loss():
+    loss = {}
+    loss['hand_sdf'] = ParamLoss(type='l1')
+    loss['obj_sdf'] = ParamLoss(type='l1')
+    loss['volume_joint'] = ParamLoss(type='l2')
+    loss['obj_corners'] = ParamLoss(type='l2')
+    loss['hand_cls'] = CLSLoss()
+    return loss

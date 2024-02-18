@@ -59,10 +59,6 @@ class Model(nn.Module):
             self.sdf_encoder = nn.Linear(260, self.cfg.MODEL.sdf_latent)
         else:
             self.sdf_encoder = nn.Linear(256, self.cfg.MODEL.sdf_latent)
-            
-        self.loss_l1 = torch.nn.L1Loss(reduction='sum')
-        self.loss_l2 = torch.nn.MSELoss()
-        self.loss_ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
     
     #cond_input may include camera intrinsics or hand wrist position
     def forward(self, inputs, targets=None, metas=None, mode='train'):
@@ -90,6 +86,11 @@ class Model(nn.Module):
                 cls_data = targets['obj_labels']
                 mask_hand = torch.ones(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points).unsqueeze(1).cuda()
 
+            inter_results = {}
+            inter_results['mask_hand'] = mask_hand
+            inter_results['mask_obj'] = mask_obj
+
+
             sdf_data = sdf_data.reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points, -1)
             cls_data = cls_data.to(torch.long).reshape(self.cfg.TRAIN.train_batch_size * self.cfg.TRAIN.num_sample_points)
             xyz_points = sdf_data[:, 0:-2]
@@ -99,6 +100,12 @@ class Model(nn.Module):
                 sdf_gt_hand = torch.clamp(sdf_gt_hand, -self.cfg.TRAIN.clamp_dist, self.cfg.TRAIN.clamp_dist)
             if self.cfg.MODEL.obj_branch:
                 sdf_gt_obj = torch.clamp(sdf_gt_obj, -self.cfg.TRAIN.clamp_dist, self.cfg.TRAIN.clamp_dist)
+
+            processed_gt = {}
+            processed_gt['sdf_gt_hand'] = sdf_gt_hand
+            processed_gt['sdf_gt_obj'] = sdf_gt_obj
+            processed_gt['cls_data'] = cls_data
+
 
             with torch.no_grad():
                 hand_pose_results = self.pose_model(inputs, metas)
@@ -168,33 +175,13 @@ class Model(nn.Module):
             sdf_results = {}
             sdf_results['hand'] = sdf_hand
             sdf_results['obj'] = sdf_obj
-            sdf_results['cls'] = cls_hand
+            sdf_results['cls_hand'] = cls_hand
 
-            loss = {}
-            if self.hand_sdf_head is not None:
-                loss['hand_sdf'] = self.cfg.TRAIN.hand_sdf_weight * self.loss_l1(sdf_hand * mask_hand, sdf_gt_hand * mask_hand) / mask_hand.sum()
-
-            if self.obj_sdf_head is not None:
-                loss['obj_sdf'] = self.cfg.TRAIN.obj_sdf_weight * self.loss_l1(sdf_obj * mask_obj, sdf_gt_obj * mask_obj) / mask_obj.sum()
-            
-            if cfg.MODEL.hand_branch and cfg.MODEL.obj_branch:
-                loss['volume_joint'] = cfg.TRAIN.volume_weight * self.loss_l2(obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
-
-            if cfg.MODEL.obj_rot and cfg.TRAIN.corner_weight > 0:
-                loss['obj_corners'] = cfg.TRAIN.corner_weight * self.loss_l2(obj_pose_results['corners'], targets['obj_corners_3d'])
-
-            if cls_hand is not None:
-                if metas['epoch'] >= self.cfg.TRAIN.sdf_add_epoch:
-                    loss['hand_cls'] = self.cfg.TRAIN.hand_cls_weight * self.loss_ce(cls_hand, cls_data)
-                else:
-                    loss['hand_cls'] = 0. * self.loss_ce(cls_hand, cls_data)
-
-            return loss, sdf_results, hand_pose_results, obj_pose_results
+            return sdf_results, hand_pose_results, obj_pose_results, inter_results, processed_gt
         else:
             with torch.no_grad():
                 input_img = inputs['img']
                 hand_pose_results = self.pose_model(inputs, metas)
-                # go through backbone
                 backbone_feat = self.backbone(input_img)
 
                 if self.cfg.MODEL.obj_branch:

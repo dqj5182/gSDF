@@ -80,7 +80,27 @@ def main():
 
             # forward
             trainer.optimizer.zero_grad()
-            loss, sdf_results, hand_pose_results, obj_pose_results = trainer.model(inputs, targets, metas, 'train')
+            sdf_results, hand_pose_results, obj_pose_results, inter_results, processed_gt = trainer.model(inputs, targets, metas, 'train')
+
+            # loss
+            loss_l1 = torch.nn.L1Loss(reduction='sum')
+            loss_l2 = torch.nn.MSELoss()
+            loss_ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
+            loss = {}
+            loss['hand_sdf'] = cfg.TRAIN.hand_sdf_weight * loss_l1(sdf_results['hand'] * inter_results['mask_hand'], processed_gt['sdf_gt_hand'] * inter_results['mask_hand']) / inter_results['mask_hand'].sum()
+            loss['obj_sdf'] = cfg.TRAIN.obj_sdf_weight * loss_l1(sdf_results['obj'] * inter_results['mask_obj'], processed_gt['sdf_gt_obj'] * inter_results['mask_obj']) / inter_results['mask_obj'].sum()
+            
+            loss['volume_joint'] = cfg.TRAIN.volume_weight * loss_l2(obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
+
+            if cfg.MODEL.obj_rot and cfg.TRAIN.corner_weight > 0:
+                loss['obj_corners'] = cfg.TRAIN.corner_weight * loss_l2(obj_pose_results['corners'], targets['obj_corners_3d'])
+
+            if sdf_results['cls_hand'] is not None:
+                if metas['epoch'] >= cfg.TRAIN.sdf_add_epoch:
+                    loss['hand_cls'] = cfg.TRAIN.hand_cls_weight * loss_ce(sdf_results['cls_hand'], processed_gt['cls_data'])
+                else:
+                    loss['hand_cls'] = 0. * loss_ce(sdf_results['cls_hand'], processed_gt['cls_data'])
 
             # backward
             all_loss = sum(loss[k].mean() for k in loss)
