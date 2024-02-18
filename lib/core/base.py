@@ -109,9 +109,9 @@ class Trainer(BaseTrainer):
 
         ckpt = torch.load(cfg.MODEL.weight_path, map_location=torch.device('cpu'))['network']
         ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
-        model.module.pose_model.load_state_dict(ckpt)
+        model.module.handmodel.load_state_dict(ckpt)
         self.logger.info('Load checkpoint from {}'.format(cfg.MODEL.weight_path))
-        model.module.pose_model.eval()
+        model.module.handmodel.eval()
 
         start_epoch, model, optimizer = self.load_model(model, optimizer)
 

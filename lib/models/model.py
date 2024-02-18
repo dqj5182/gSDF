@@ -13,9 +13,9 @@ from lib.utils.pose_utils import soft_argmax, decode_volume, decode_volume_abs
 from lib.utils.sdf_utils import kinematic_embedding, pixel_align
 
 
-class pose_model(nn.Module):
+class HandModel(nn.Module):
     def __init__(self, cfg, backbone, neck, volume_head):
-        super(pose_model, self).__init__()
+        super(HandModel, self).__init__()
         self.cfg = cfg
         self.backbone = backbone
         self.dim_backbone_feat = 2048 if self.cfg.MODEL.backbone_pose == 'resnet_50' else 512
@@ -42,10 +42,10 @@ class pose_model(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, cfg, pose_model, backbone, neck, volume_head, rot_head, hand_sdf_head, obj_sdf_head):
+    def __init__(self, cfg, HandModel, backbone, neck, volume_head, rot_head, hand_sdf_head, obj_sdf_head):
         super(Model, self).__init__()
         self.cfg = cfg
-        self.pose_model = pose_model
+        self.handmodel = HandModel
         self.backbone = backbone
         self.neck = neck
         self.volume_head = volume_head
@@ -108,7 +108,7 @@ class Model(nn.Module):
 
 
             with torch.no_grad():
-                hand_pose_results = self.pose_model(inputs, metas)
+                hand_pose_results = self.handmodel(inputs, metas)
 
             # go through backbone
             backbone_feat = self.backbone(input_img)
@@ -181,7 +181,7 @@ class Model(nn.Module):
         else:
             with torch.no_grad():
                 input_img = inputs['img']
-                hand_pose_results = self.pose_model(inputs, metas)
+                hand_pose_results = self.handmodel(inputs, metas)
                 backbone_feat = self.backbone(input_img)
 
                 if self.cfg.MODEL.obj_branch:
@@ -230,7 +230,7 @@ def get_model(cfg, is_train):
     neck = UNet(neck_inplanes, 256, 3)
     if cfg.MODEL.hand_branch:
         volume_head_hand = ConvHead([256, 21 * 64], kernel=1, stride=1, padding=0, bnrelu_final=False)
-    posenet = pose_model(cfg, backbone_pose, neck, volume_head_hand)
+    posenet = HandModel(cfg, backbone_pose, neck, volume_head_hand)
 
     if cfg.MODEL.obj_branch:
         neck_shape = UNet(neck_inplanes, 256, 3)
