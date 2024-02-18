@@ -44,7 +44,7 @@ def main():
     trainer = Trainer(args, load_dir=cfg.MODEL.weight_path)
 
     # train
-    trainer.run(writer_dict)
+    trainer.run(args, writer_dict)
         
     # test
     torch.cuda.empty_cache()

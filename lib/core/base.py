@@ -17,7 +17,7 @@ from lib.utils.train_utils import get_dataloader
 
 
 class BaseTrainer:
-    def __init__(self, args, log_name ='logs.txt'):
+    def __init__(self, args, load_dir, log_name ='logs.txt'):
         self.cur_epoch = 0
         # timer
         self.tot_timer = Timer()
@@ -28,6 +28,8 @@ class BaseTrainer:
         self.logger.add(osp.join(cfg.log_dir, log_name))
         # loss
         self.loss = prepare_criterion()
+        # model
+        self.model, checkpoint = prepare_network(args, load_dir, is_train=True)
 
 
 class BaseTester:
@@ -40,11 +42,13 @@ class BaseTester:
         # logger
         self.logger = logger
         self.logger.add(osp.join(cfg.log_dir, log_name))
+        # model
+        self.model, _ = prepare_network(args, load_dir, is_train=False)
 
 
 class Trainer(BaseTrainer):
     def __init__(self, args, load_dir):
-        super(Trainer, self).__init__(args=args, log_name = 'train_logs.txt')
+        super(Trainer, self).__init__(args=args, load_dir=load_dir, log_name='train_logs.txt')
 
     def get_optimizer(self, model):
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.TRAIN.lr)
@@ -55,7 +59,8 @@ class Trainer(BaseTrainer):
         torch.save(state, file_path)
         self.logger.info("Write snapshot into {}".format(file_path))
 
-    def load_model(self, model, optimizer):
+    def load_model(self, args, load_dir, model, optimizer):
+        # import pdb; pdb.set_trace()
         model_file_list = glob.glob(osp.join(cfg.model_dir, '*.pth.tar'))
         if len(model_file_list) == 0:
             if os.path.exists(cfg.OTHERS.checkpoint):
@@ -99,29 +104,27 @@ class Trainer(BaseTrainer):
     def get_lr(self):
         return self.optimizer.param_groups[0]['lr']
 
-    def _make_model(self):
+    def _make_model(self, args):
         self.logger.info("Creating graph and optimizer...")
-        model = get_model(cfg, True)
-        model = model.cuda()
-        model = nn.DataParallel(model)
-        optimizer = self.get_optimizer(model)
-        model.train()
+        self.model = self.model.cuda()
+        self.model = nn.DataParallel(self.model)
+        optimizer = self.get_optimizer(self.model)
+        self.model.train()
 
         ckpt = torch.load(cfg.MODEL.weight_path, map_location=torch.device('cpu'))['network']
         ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
-        model.module.handmodel.load_state_dict(ckpt)
+        self.model.module.handmodel.load_state_dict(ckpt)
         self.logger.info('Load checkpoint from {}'.format(cfg.MODEL.weight_path))
-        model.module.handmodel.eval()
+        self.model.module.handmodel.eval()
 
-        start_epoch, model, optimizer = self.load_model(model, optimizer)
+        start_epoch, self.model, optimizer = self.load_model(args, None, self.model, optimizer)
 
         self.start_epoch = start_epoch
-        self.model = model
         self.optimizer = optimizer
 
-    def run(self, writer_dict):
+    def run(self, args, writer_dict):
         self.batch_generator, self.itr_per_epoch = get_dataloader(cfg.DATASET.trainset_3d, cfg.DATASET.trainset_3d_split, True, logger=self.logger)
-        self._make_model()
+        self._make_model(args)
 
         # train
         for epoch in range(self.start_epoch, cfg.TRAIN.end_epoch):
@@ -222,27 +225,24 @@ class Trainer(BaseTrainer):
 class Tester(BaseTester):
     def __init__(self, args, test_epoch):
         self.test_epoch = test_epoch
-        super(Tester, self).__init__(log_name = 'test_logs.txt')
+        super(Tester, self).__init__(log_name='test_logs.txt')
     
-    def _make_model(self):
+    def _make_model(self, args):
         model_path = os.path.join(cfg.model_dir, 'snapshot_%d.pth.tar' % self.test_epoch)
         assert os.path.exists(model_path), 'Cannot find model at ' + model_path
         self.logger.info('Load checkpoint from {}'.format(model_path))
         
         # prepare network
         self.logger.info("Creating graph...")
-        model = get_model(cfg, is_train=False)
-        model = model.cuda()
-        model = nn.DataParallel(model)
+        self.model = self.model.cuda()
+        self.model = nn.DataParallel(self.model)
         ckpt = torch.load(model_path)
-        model.load_state_dict(ckpt['network'])
-        model.eval()
-
-        self.model = model
+        self.model.load_state_dict(ckpt['network'])
+        self.model.eval()
 
     def run(self):
         self.batch_generator, self.itr_per_epoch = get_dataloader(cfg.DATASET.trainset_3d, cfg.DATASET.trainset_3d_split, False, logger=None)
-        self._make_model()
+        self._make_model(args)
 
         with torch.no_grad():
             for itr, (inputs, metas) in enumerate(self.batch_generator): ######## need to re-implement tqdm ########
