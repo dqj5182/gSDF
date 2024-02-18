@@ -13,6 +13,7 @@ from lib.utils.timer import Timer
 from lib.core.config import cfg
 from model import get_model
 from lib.datasets.sdf_dataset import SDFDataset
+from lib.utils.train_utils import get_dataloader
 
 
 class BaseTrainer:
@@ -25,7 +26,7 @@ class BaseTrainer:
         # logger
         self.logger = logger
         self.logger.add(osp.join(cfg.log_dir, log_name))
-
+        # loss
         self.loss = prepare_criterion()
 
 
@@ -97,14 +98,6 @@ class Trainer(BaseTrainer):
 
     def get_lr(self):
         return self.optimizer.param_groups[0]['lr']
-    
-    def _make_batch_generator(self):
-        self.logger.info("Creating dataset...")
-        exec(f'from data.{cfg.DATASET.trainset_3d}.dataset import {cfg.DATASET.trainset_3d}')
-        trainset3d_db = eval(cfg.DATASET.trainset_3d)('train_' + cfg.DATASET.trainset_3d_split)
-        self.trainset_loader = SDFDataset(trainset3d_db, cfg=cfg)
-        self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.OTHERS.num_gpus / cfg.TRAIN.train_batch_size)
-        self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.TRAIN.train_batch_size * cfg.OTHERS.num_gpus, shuffle=False, num_workers=cfg.OTHERS.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
 
     def _make_model(self):
         self.logger.info("Creating graph and optimizer...")
@@ -126,6 +119,9 @@ class Trainer(BaseTrainer):
         self.optimizer = optimizer
 
     def run(self, writer_dict):
+        self.batch_generator, self.itr_per_epoch = get_dataloader(cfg.DATASET.trainset_3d, cfg.DATASET.trainset_3d_split, True, logger=self.logger)
+        self._make_model()
+
         # train
         for epoch in range(self.start_epoch, cfg.TRAIN.end_epoch):
             self.tot_timer.tic()
@@ -167,27 +163,20 @@ class Trainer(BaseTrainer):
                 sdf_results, hand_pose_results, obj_pose_results, inter_results, processed_gt = self.model(inputs, targets, metas, 'train')
 
                 # loss
-                loss_l1 = torch.nn.L1Loss(reduction='sum')
-                loss_l2 = torch.nn.MSELoss()
-                loss_ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
-
-                loss = {}
-                loss['hand_sdf'] = cfg.TRAIN.hand_sdf_weight * loss_l1(sdf_results['hand'] * inter_results['mask_hand'], processed_gt['sdf_gt_hand'] * inter_results['mask_hand']) / inter_results['mask_hand'].sum()
-                loss['obj_sdf'] = cfg.TRAIN.obj_sdf_weight * loss_l1(sdf_results['obj'] * inter_results['mask_obj'], processed_gt['sdf_gt_obj'] * inter_results['mask_obj']) / inter_results['mask_obj'].sum()
-                
-                loss['volume_joint'] = cfg.TRAIN.volume_weight * loss_l2(obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
-
+                loss_dict = {}
+                loss_dict['hand_sdf'] = cfg.TRAIN.hand_sdf_weight * self.loss['hand_sdf'](sdf_results['hand'] * inter_results['mask_hand'], processed_gt['sdf_gt_hand'] * inter_results['mask_hand']) / inter_results['mask_hand'].sum()
+                loss_dict['obj_sdf'] = cfg.TRAIN.obj_sdf_weight * self.loss['obj_sdf'](sdf_results['obj'] * inter_results['mask_obj'], processed_gt['sdf_gt_obj'] * inter_results['mask_obj']) / inter_results['mask_obj'].sum()
+                loss_dict['volume_joint'] = cfg.TRAIN.volume_weight * self.loss['volume_joint'](obj_pose_results['center'], targets['obj_center_3d'].unsqueeze(1))
                 if cfg.MODEL.obj_rot and cfg.TRAIN.corner_weight > 0:
-                    loss['obj_corners'] = cfg.TRAIN.corner_weight * loss_l2(obj_pose_results['corners'], targets['obj_corners_3d'])
-
+                    loss_dict['obj_corners'] = cfg.TRAIN.corner_weight * self.loss['obj_corners'](obj_pose_results['corners'], targets['obj_corners_3d'])
                 if sdf_results['cls_hand'] is not None:
                     if metas['epoch'] >= cfg.TRAIN.sdf_add_epoch:
-                        loss['hand_cls'] = cfg.TRAIN.hand_cls_weight * loss_ce(sdf_results['cls_hand'], processed_gt['cls_data'])
+                        loss_dict['hand_cls'] = cfg.TRAIN.hand_cls_weight * self.loss['hand_cls'](sdf_results['cls_hand'], processed_gt['cls_data'])
                     else:
-                        loss['hand_cls'] = 0. * loss_ce(sdf_results['cls_hand'], processed_gt['cls_data'])
+                        loss_dict['hand_cls'] = 0. * self.loss['hand_cls'](sdf_results['cls_hand'], processed_gt['cls_data'])
 
                 # backward
-                all_loss = sum(loss[k].mean() for k in loss)
+                all_loss = sum(loss_dict[k].mean() for k in loss_dict)
                 all_loss.backward()
 
                 self.optimizer.step()
@@ -203,7 +192,7 @@ class Trainer(BaseTrainer):
 
                 # save
                 record_dict = {}
-                for k, v in loss.items():
+                for k, v in loss_dict.items():
                     record_dict[k] = v.detach().mean() * 1000.
                 screen += ['%s: %.3f' % ('loss_' + k, v) for k, v in record_dict.items()]
 
@@ -233,14 +222,6 @@ class Tester(BaseTester):
     def __init__(self, test_epoch):
         self.test_epoch = test_epoch
         super(Tester, self).__init__(log_name = 'test_logs.txt')
-
-    def _make_batch_generator(self):
-        exec(f'from data.{cfg.DATASET.testset}.dataset import {cfg.DATASET.testset}')
-        testset3d_db = eval(cfg.DATASET.testset)('test_' + cfg.DATASET.testset_split)
-
-        self.testset_loader = SDFDataset(testset3d_db, cfg=cfg, mode='test')
-        self.itr_per_epoch = math.ceil(len(self.testset_loader) / cfg.OTHERS.num_gpus / cfg.TEST.test_batch_size)
-        self.batch_generator = DataLoader(dataset=self.testset_loader, batch_size=cfg.TEST.test_batch_size * cfg.OTHERS.num_gpus, shuffle=False, num_workers=cfg.OTHERS.num_threads, pin_memory=True, drop_last=False, persistent_workers=False)
     
     def _make_model(self):
         model_path = os.path.join(cfg.model_dir, 'snapshot_%d.pth.tar' % self.test_epoch)
@@ -259,6 +240,9 @@ class Tester(BaseTester):
         self.model = model
 
     def run(self):
+        self.batch_generator, self.itr_per_epoch = get_dataloader(cfg.DATASET.trainset_3d, cfg.DATASET.trainset_3d_split, False, logger=None)
+        self._make_model()
+
         with torch.no_grad():
             for itr, (inputs, metas) in enumerate(self.batch_generator): ######## need to re-implement tqdm ########
                 for k, v in inputs.items():

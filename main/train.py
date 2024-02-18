@@ -48,8 +48,6 @@ def main():
     # test
     torch.cuda.empty_cache()
     tester = Tester(cfg.end_epoch - 1)
-    tester._make_batch_generator()
-    tester._make_model()
     tester.run()
          
     
