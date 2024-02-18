@@ -6,14 +6,12 @@ import tqdm
 from loguru import logger
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim
 from lib.utils.timer import Timer
 from lib.core.config import cfg
 from model import get_model
-from lib.datasets.sdf_dataset import SDFDataset
-from lib.utils.train_utils import get_dataloader
+from lib.utils.train_utils import get_dataloader, get_optimizer, train_setup
 
 
 class BaseTrainer:
@@ -29,8 +27,43 @@ class BaseTrainer:
         # loss
         self.loss = prepare_criterion()
         # model
+        self.logger.info("Creating graph and optimizer...")
+        # train_setup(self.model, checkpoint)
         self.model, checkpoint = prepare_network(args, load_dir, is_train=True)
 
+        self.model = self.model.cuda()
+        self.model = nn.DataParallel(self.model)
+        optimizer = self.get_optimizer(self.model)
+        self.model.train()
+
+        ckpt = torch.load(cfg.MODEL.weight_path, map_location=torch.device('cpu'))['network']
+        ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
+        self.model.module.handmodel.load_state_dict(ckpt)
+        self.logger.info('Load checkpoint from {}'.format(cfg.MODEL.weight_path))
+        self.model.module.handmodel.eval()
+
+        # load_model
+        model_file_list = glob.glob(osp.join(cfg.model_dir, '*.pth.tar'))
+        if len(model_file_list) == 0:
+            if os.path.exists(cfg.OTHERS.checkpoint):
+                ckpt = torch.load(cfg.OTHERS.checkpoint, map_location=torch.device('cpu'))
+                self.model.load_state_dict(ckpt['network'])
+                start_epoch = 0
+                self.logger.info('Load checkpoint from {}'.format(cfg.OTHERS.checkpoint))
+            else:
+                start_epoch = 0
+                self.logger.info('Start training from scratch')
+        else:
+            cur_epoch = max([int(file_name[file_name.find('snapshot_') + 9 : file_name.find('.pth.tar')]) for file_name in model_file_list])
+            ckpt_path = osp.join(cfg.model_dir, 'snapshot_' + str(cur_epoch) + '.pth.tar')
+            ckpt = torch.load(ckpt_path, map_location=torch.device('cpu')) 
+            start_epoch = ckpt['epoch'] + 1
+            self.model.load_state_dict(ckpt['network'])
+            optimizer.load_state_dict(ckpt['optimizer'])
+            self.logger.info('Continue training and load checkpoint from {}'.format(ckpt_path))
+
+        self.start_epoch = start_epoch
+        self.optimizer = optimizer
 
 class BaseTester:
     def __init__(self, args, log_name ='logs.txt'):
@@ -59,30 +92,6 @@ class Trainer(BaseTrainer):
         torch.save(state, file_path)
         self.logger.info("Write snapshot into {}".format(file_path))
 
-    def load_model(self, args, load_dir, model, optimizer):
-        # import pdb; pdb.set_trace()
-        model_file_list = glob.glob(osp.join(cfg.model_dir, '*.pth.tar'))
-        if len(model_file_list) == 0:
-            if os.path.exists(cfg.OTHERS.checkpoint):
-                ckpt = torch.load(cfg.OTHERS.checkpoint, map_location=torch.device('cpu'))
-                model.load_state_dict(ckpt['network'])
-                start_epoch = 0
-                self.logger.info('Load checkpoint from {}'.format(cfg.OTHERS.checkpoint))
-                return start_epoch, model, optimizer
-            else:
-                start_epoch = 0
-                self.logger.info('Start training from scratch')
-                return start_epoch, model, optimizer
-        else:
-            cur_epoch = max([int(file_name[file_name.find('snapshot_') + 9 : file_name.find('.pth.tar')]) for file_name in model_file_list])
-            ckpt_path = osp.join(cfg.model_dir, 'snapshot_' + str(cur_epoch) + '.pth.tar')
-            ckpt = torch.load(ckpt_path, map_location=torch.device('cpu')) 
-            start_epoch = ckpt['epoch'] + 1
-            model.load_state_dict(ckpt['network'])
-            optimizer.load_state_dict(ckpt['optimizer'])
-            self.logger.info('Continue training and load checkpoint from {}'.format(ckpt_path))
-            return start_epoch, model, optimizer
-
     def set_lr(self, epoch, iter_num):
         if epoch < cfg.TRAIN.warm_up_epoch:
             cur_lr = cfg.TRAIN.lr / cfg.TRAIN.warm_up_epoch * epoch
@@ -104,27 +113,9 @@ class Trainer(BaseTrainer):
     def get_lr(self):
         return self.optimizer.param_groups[0]['lr']
 
-    def _make_model(self, args):
-        self.logger.info("Creating graph and optimizer...")
-        self.model = self.model.cuda()
-        self.model = nn.DataParallel(self.model)
-        optimizer = self.get_optimizer(self.model)
-        self.model.train()
-
-        ckpt = torch.load(cfg.MODEL.weight_path, map_location=torch.device('cpu'))['network']
-        ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
-        self.model.module.handmodel.load_state_dict(ckpt)
-        self.logger.info('Load checkpoint from {}'.format(cfg.MODEL.weight_path))
-        self.model.module.handmodel.eval()
-
-        start_epoch, self.model, optimizer = self.load_model(args, None, self.model, optimizer)
-
-        self.start_epoch = start_epoch
-        self.optimizer = optimizer
-
     def run(self, args, writer_dict):
         self.batch_generator, self.itr_per_epoch = get_dataloader(cfg.DATASET.trainset_3d, cfg.DATASET.trainset_3d_split, True, logger=self.logger)
-        self._make_model(args)
+        # self._make_model(args)
 
         # train
         for epoch in range(self.start_epoch, cfg.TRAIN.end_epoch):
