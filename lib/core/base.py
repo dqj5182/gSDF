@@ -28,42 +28,8 @@ class BaseTrainer:
         self.loss = prepare_criterion()
         # model
         self.logger.info("Creating graph and optimizer...")
-        # train_setup(self.model, checkpoint)
         self.model, checkpoint = prepare_network(args, load_dir, is_train=True)
-
-        self.model = self.model.cuda()
-        self.model = nn.DataParallel(self.model)
-        optimizer = self.get_optimizer(self.model)
-        self.model.train()
-
-        ckpt = torch.load(cfg.MODEL.weight_path, map_location=torch.device('cpu'))['network']
-        ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
-        self.model.module.handmodel.load_state_dict(ckpt)
-        self.logger.info('Load checkpoint from {}'.format(cfg.MODEL.weight_path))
-        self.model.module.handmodel.eval()
-
-        # load_model
-        model_file_list = glob.glob(osp.join(cfg.model_dir, '*.pth.tar'))
-        if len(model_file_list) == 0:
-            if os.path.exists(cfg.OTHERS.checkpoint):
-                ckpt = torch.load(cfg.OTHERS.checkpoint, map_location=torch.device('cpu'))
-                self.model.load_state_dict(ckpt['network'])
-                start_epoch = 0
-                self.logger.info('Load checkpoint from {}'.format(cfg.OTHERS.checkpoint))
-            else:
-                start_epoch = 0
-                self.logger.info('Start training from scratch')
-        else:
-            cur_epoch = max([int(file_name[file_name.find('snapshot_') + 9 : file_name.find('.pth.tar')]) for file_name in model_file_list])
-            ckpt_path = osp.join(cfg.model_dir, 'snapshot_' + str(cur_epoch) + '.pth.tar')
-            ckpt = torch.load(ckpt_path, map_location=torch.device('cpu')) 
-            start_epoch = ckpt['epoch'] + 1
-            self.model.load_state_dict(ckpt['network'])
-            optimizer.load_state_dict(ckpt['optimizer'])
-            self.logger.info('Continue training and load checkpoint from {}'.format(ckpt_path))
-
-        self.start_epoch = start_epoch
-        self.optimizer = optimizer
+        self.model, self.optimizer, self.start_epoch = train_setup(self.model, checkpoint, self.logger)
 
 class BaseTester:
     def __init__(self, args, log_name ='logs.txt'):
@@ -82,10 +48,6 @@ class BaseTester:
 class Trainer(BaseTrainer):
     def __init__(self, args, load_dir):
         super(Trainer, self).__init__(args=args, load_dir=load_dir, log_name='train_logs.txt')
-
-    def get_optimizer(self, model):
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.TRAIN.lr)
-        return optimizer
 
     def save_model(self, state, epoch):
         file_path = osp.join(cfg.model_dir, 'snapshot_{}.pth.tar'.format(str(epoch)))
