@@ -17,7 +17,7 @@ from lib.utils.train_utils import get_dataloader
 
 
 class BaseTrainer:
-    def __init__(self, log_name ='logs.txt'):
+    def __init__(self, args, log_name ='logs.txt'):
         self.cur_epoch = 0
         # timer
         self.tot_timer = Timer()
@@ -31,7 +31,7 @@ class BaseTrainer:
 
 
 class BaseTester:
-    def __init__(self, log_name ='logs.txt'):
+    def __init__(self, args, log_name ='logs.txt'):
         self.cur_epoch = 0
         # timer
         self.tot_timer = Timer()
@@ -43,8 +43,8 @@ class BaseTester:
 
 
 class Trainer(BaseTrainer):
-    def __init__(self):
-        super(Trainer, self).__init__(log_name = 'train_logs.txt')
+    def __init__(self, args, load_dir):
+        super(Trainer, self).__init__(args=args, log_name = 'train_logs.txt')
 
     def get_optimizer(self, model):
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.TRAIN.lr)
@@ -114,6 +114,7 @@ class Trainer(BaseTrainer):
         model.module.pose_model.eval()
 
         start_epoch, model, optimizer = self.load_model(model, optimizer)
+
         self.start_epoch = start_epoch
         self.model = model
         self.optimizer = optimizer
@@ -219,7 +220,7 @@ class Trainer(BaseTrainer):
 
 
 class Tester(BaseTester):
-    def __init__(self, test_epoch):
+    def __init__(self, args, test_epoch):
         self.test_epoch = test_epoch
         super(Tester, self).__init__(log_name = 'test_logs.txt')
     
@@ -273,7 +274,7 @@ class Tester(BaseTester):
 
 def prepare_network(args, load_dir='', is_train=True): 
     from lib.models.model import get_model  
-    model = get_model(is_train)
+    model = get_model(cfg, is_train)
     if load_dir and (not is_train or args.resume_training):
         checkpoint = load_checkpoint(load_dir=load_dir)
         try:

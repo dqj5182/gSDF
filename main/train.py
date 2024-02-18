@@ -10,8 +10,11 @@ from lib.utils.dir_utils import export_pose_results
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, help='experiment configure file name')
+    parser.add_argument('--resume_training', action='store_true', help='resume training')
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
+    parser.add_argument('--cfg', type=str, help='experiment configure file name')
+    parser.add_argument('--exp', type=str, default='', help='assign experiments directory')
+    parser.add_argument('--checkpoint', type=str, default='', help='model path for evaluation')
     args = parser.parse_args()
 
     if not args.gpu_ids:
@@ -38,9 +41,7 @@ def main():
     cudnn.benchmark = True
     writer_dict = {'writer': SummaryWriter(log_dir = cfg.log_dir), 'train_global_steps': 0}
 
-    trainer = Trainer()
-    trainer._make_batch_generator()
-    trainer._make_model()
+    trainer = Trainer(args, load_dir=cfg.MODEL.weight_path)
 
     # train
     trainer.run(writer_dict)

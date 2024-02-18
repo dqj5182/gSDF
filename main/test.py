@@ -14,6 +14,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help='experiment configure file name')
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
+    parser.add_argument('--exp', type=str, default='', help='assign experiments directory')
+    parser.add_argument('--checkpoint', type=str, default='', help='model path for evaluation')
     args = parser.parse_args()
 
     if not args.gpu_ids:
@@ -42,7 +44,7 @@ def main():
     else:
         test_epoch = cfg.TRAIN.end_epoch - 1
 
-    tester = Tester(test_epoch)
+    tester = Tester(args, test_epoch)
     tester._make_batch_generator()
     tester._make_model()
     tester.run()

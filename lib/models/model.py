@@ -222,9 +222,9 @@ def get_model(cfg, is_train):
 
     backbone_pose = ResNetBackbone(num_pose_resnet_layers)
     backbone_shape = ResNetBackbone(num_shape_resnet_layers)
-    if is_train:
-        backbone_pose.init_weights()
-        backbone_shape.init_weights()
+
+    backbone_pose.init_weights()
+    backbone_shape.init_weights()
 
     neck_inplanes = 2048 if num_pose_resnet_layers == 50 else 512
     neck = UNet(neck_inplanes, 256, 3)
