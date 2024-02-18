@@ -2,7 +2,7 @@ import os
 import os.path as osp
 import math
 import glob
-import abc
+import tqdm
 from loguru import logger
 import numpy as np
 import torch
@@ -257,6 +257,34 @@ class Tester(BaseTester):
         model.eval()
 
         self.model = model
+
+    def run(self):
+        with torch.no_grad():
+            for itr, (inputs, metas) in enumerate(self.batch_generator): ######## need to re-implement tqdm ########
+                for k, v in inputs.items():
+                    if isinstance(v, list):
+                        for i in range(len(v)):
+                            inputs[k][i] = inputs[k][i].cuda(non_blocking=True)
+                    else:
+                        inputs[k] = inputs[k].cuda(non_blocking=True)
+
+                for k, v in metas.items():
+                    if k != 'id' and k != 'obj_id':
+                        if isinstance(v, list):
+                            for i in range(len(v)):
+                                metas[k][i] = metas[k][i].cuda(non_blocking=True)
+                        else:
+                            metas[k] = metas[k].cuda(non_blocking=True)
+
+                # forward
+                sdf_feat, hand_pose_results, obj_pose_results = self.model(inputs, targets=None, metas=metas, mode='test')
+
+                # save
+                from recon import reconstruct
+                from lib.utils.dir_utils import export_pose_results
+                export_pose_results(cfg.hand_pose_result_dir, hand_pose_results, metas)
+                export_pose_results(cfg.obj_pose_result_dir, obj_pose_results, metas)
+                reconstruct(cfg, metas['id'], self.model, sdf_feat, inputs, metas, hand_pose_results, obj_pose_results)
 
 
 def prepare_network(args, load_dir='', is_train=True): 
