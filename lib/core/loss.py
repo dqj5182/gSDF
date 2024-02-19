@@ -16,6 +16,15 @@ class ParamLoss(nn.Module):
         return self.criterion(param_out, param_gt)
 
 
+class CoordLoss(nn.Module):
+    def __init__(self):
+        super(CoordLoss, self).__init__()
+        self.criterion = nn.MSELoss()
+
+    def forward(self, pred, target, valid=None):
+        return self.criterion(pred, target)
+
+
 class CLSLoss(nn.Module):
     def __init__(self):
         super(CLSLoss, self).__init__()
@@ -30,7 +39,7 @@ def get_loss():
     loss = {}
     loss['hand_sdf'] = ParamLoss(type='l1')
     loss['obj_sdf'] = ParamLoss(type='l1')
-    loss['volume_joint'] = ParamLoss(type='l2')
-    loss['obj_corners'] = ParamLoss(type='l2')
+    loss['volume_joint'] = CoordLoss()
+    loss['obj_corners'] = CoordLoss()
     loss['hand_cls'] = CLSLoss()
     return loss
