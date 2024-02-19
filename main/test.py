@@ -31,7 +31,6 @@ def parse_args():
 
 
 def main():
-    # argument parse and create log
     args = parse_args()
     task = args.cfg.split('/')[-3]
     add_path(os.path.join('../lib', 'models'))

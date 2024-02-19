@@ -77,7 +77,6 @@ class Trainer(BaseTrainer):
 
     def run(self, args, writer_dict):
         self.batch_generator, self.itr_per_epoch = get_dataloader(cfg.DATASET.trainset_3d, cfg.DATASET.trainset_3d_split, True, logger=self.logger)
-        # self._make_model(args)
 
         # train
         for epoch in range(self.start_epoch, cfg.TRAIN.end_epoch):
