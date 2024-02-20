@@ -75,7 +75,7 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 python train.py --gpu 4-7 --cfg ../asset/yaml/dexyc
 ## Testing and Evaluation
 For Obman
 ```
-CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 --cfg ../asset/yaml/dexycb_test.yaml
+CUDA_VISIBLE_DEVICES=1 python test.py --gpu 1 --cfg ../asset/yaml/obman_test.yaml
 ```
 For DexYCB
 ```
