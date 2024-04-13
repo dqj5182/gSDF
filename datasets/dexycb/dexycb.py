@@ -82,7 +82,8 @@ class dexycb:
         db = COCO(self.anno_file)
         data = {}
 
-        for aid in self.split:
+        # for aid in self.split:
+        for aid in self.split[:10]:
             sample = dict()
             ann = db.anns[aid]
             img_data = db.loadImgs(ann['image_id'])[0]
@@ -147,7 +148,8 @@ class dexycb:
         if self.end_point is None:
             self.end_point = len(self.split)
         
-        for aid in self.split[self.start_point:self.end_point]:
+        # for aid in self.split[self.start_point:self.end_point]:
+        for aid in self.split[:10]:
             sample = dict()
             ann = db.anns[aid]
             img_data = db.loadImgs(ann['image_id'])[0]

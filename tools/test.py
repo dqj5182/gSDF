@@ -63,7 +63,7 @@ def main():
     tester._make_model()
 
     with torch.no_grad():
-        for itr, (inputs, metas) in tqdm(enumerate(tester.batch_generator)):
+        for itr, (inputs, metas) in tqdm(enumerate(tester.batch_generator), total=len(tester.batch_generator)):
             for k, v in inputs.items():
                 if isinstance(v, list):
                     for i in range(len(v)):

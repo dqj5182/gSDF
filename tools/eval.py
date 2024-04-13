@@ -24,14 +24,14 @@ import shutil
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dir', '-e', required=True, type=str)
-    parser.add_argument('--num_proc', default=10, type=int)
+    parser.add_argument('--num_proc', default=1, type=int)
     args = parser.parse_args()
 
     return args
 
 
 def evaluate(queue, db, output_dir):
-    for idx, sample in tqdm(enumerate(db.data)):
+    for idx, sample in tqdm(enumerate(db.data), total=len(db.data)):
         error_dict = db._evaluate(output_dir, idx)
         queue.put([tuple(error_dict.values())])
 
