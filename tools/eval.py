@@ -39,7 +39,11 @@ def evaluate(queue, db, output_dir):
 def main():
     # argument parse and create log
     args = parse_args()
-    testset = args.dir.strip('/').split('/')[-1].split('_')[1]
+    # testset = args.dir.strip('/').split('/')[-1].split('_')[1]
+    if 'obman' in args.dir:
+        testset = 'obman'
+    elif 'dexycb' in args.dir:
+        testset =  'dexycb'
     exec(f'from datasets.{testset}.{testset} import {testset}')
     if testset == 'obman':
         data_root = '../datasets/obman/data/'

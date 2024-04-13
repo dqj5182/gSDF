@@ -49,7 +49,8 @@ class pose_model(nn.Module):
             volume_joint_preds = decode_volume(cfg, hm_pred, metas['hand_center_3d'], metas['cam_intr'])
         
         if self.cfg.hand_branch:
-            hand_pose_results = ik_solver_mano(None, volume_joint_preds[:, :21])
+            volume_joint_preds = volume_joint_preds.to(volume_joint_preds.device)
+            hand_pose_results = volume_joint_preds(None, volume_joint_preds[:, :21])
             hand_pose_results['volume_joints'] = volume_joint_preds
         else:
             hand_pose_results = None

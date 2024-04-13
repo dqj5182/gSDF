@@ -23,7 +23,7 @@ class SequenceLoader():
   def __init__(
       self,
       name,
-      device='cuda:0',
+      device='cuda',
       preload=True,
       app='viewer',
   ):

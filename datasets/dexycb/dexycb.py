@@ -193,6 +193,8 @@ class dexycb:
         sample = self.data[idx]
         sample_idx = sample['id']
 
+        output_path = os.path.join(output_path, 'result_dexycb_gt_0')
+
         pred_mano_pose_path = os.path.join(output_path, 'hand_pose', sample_idx + '.json')
         with open(pred_mano_pose_path, 'r') as f:
             pred_hand_pose = json.load(f)

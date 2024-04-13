@@ -9,8 +9,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
+import torch.nn as nn
 from torch.nn.parallel import DataParallel
-from torch.nn.parallel import DistributedDataParallel as NativeDDP
+# from torch.nn.parallel import DistributedDataParallel as NativeDDP
 import torch.optim
 import torchvision.transforms as transforms
 from utils.timer import Timer
@@ -115,8 +116,8 @@ class Trainer(Base):
 
             self.trainset_loader = MultipleDatasets(train_dataset_loaders, make_same_len=True)
             self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
-            self.train_sampler = DistributedSampler(self.trainset_loader)
-            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, sampler=self.train_sampler, drop_last=True, persistent_workers=False)
+            # self.train_sampler = DistributedSampler(self.trainset_loader)
+            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
         else:
             exec(f'from datasets.{cfg.trainset_3d}.{cfg.trainset_3d} import {cfg.trainset_3d}')
             if 'video' in cfg.task:
@@ -132,17 +133,19 @@ class Trainer(Base):
                 self.trainset_loader = PoseDataset(trainset3d_db, cfg=cfg)
 
             self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
-            self.train_sampler = DistributedSampler(self.trainset_loader)
-            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, sampler=self.train_sampler, drop_last=True, persistent_workers=False)
+            # self.train_sampler = DistributedSampler(self.trainset_loader)
+            # self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, sampler=self.train_sampler, drop_last=True, persistent_workers=False)
+            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
 
-    def _make_model(self, local_rank):
+    def _make_model(self):
         # prepare network
         self.logger.info("Creating graph and optimizer...")
         model = get_model(cfg, True)
         model = model.cuda()
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model = nn.DataParallel(model)
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         optimizer = self.get_optimizer(model)
-        model = NativeDDP(model, device_ids=[local_rank], output_device=local_rank)
+        # model = NativeDDP(model, device_ids=[local_rank], output_device=local_rank)
         model.train()
 
         if (cfg.task == 'hsdf_osdf_2net' or cfg.task == 'hsdf_osdf_2net_pa') and os.path.exists(cfg.ckpt):
@@ -180,36 +183,36 @@ class Trainer(Base):
 
 
 class Tester(Base):
-    def __init__(self, local_rank, test_epoch):
-        self.local_rank = local_rank
+    def __init__(self, test_epoch):
+        # self.local_rank = local_rank
         self.test_epoch = test_epoch
         super(Tester, self).__init__(log_name = 'test_logs.txt')
 
     def _make_batch_generator(self):
         # data load and construct batch generator
-        start_points = []
-        end_points = []
-        if 'video' in cfg.task:
-            tot_test_samples = cfg.num_testset_videos
-        else:
-            tot_test_samples = cfg.num_testset_samples
+        # start_points = []
+        # end_points = []
+        # if 'video' in cfg.task:
+        #     tot_test_samples = cfg.num_testset_videos
+        # else:
+        #     tot_test_samples = cfg.num_testset_samples
 
-        division = tot_test_samples // cfg.num_gpus
-        for i in range(cfg.num_gpus):
-            start_point = i * division
-            if i != cfg.num_gpus - 1:
-                end_point = start_point + division
-            else:
-                end_point = tot_test_samples
-            start_points.append(start_point)
-            end_points.append(end_point)
+        # division = tot_test_samples // cfg.num_gpus
+        # for i in range(cfg.num_gpus):
+        #     start_point = i * division
+        #     if i != cfg.num_gpus - 1:
+        #         end_point = start_point + division
+        #     else:
+        #         end_point = tot_test_samples
+        #     start_points.append(start_point)
+        #     end_points.append(end_point)
 
-        self.logger.info(f"Creating dataset from {start_points[self.local_rank]} to {end_points[self.local_rank]}")
+        # self.logger.info(f"Creating dataset from {start_points[self.local_rank]} to {end_points[self.local_rank]}")
         exec(f'from datasets.{cfg.testset}.{cfg.testset} import {cfg.testset}')
         if 'video' in cfg.task:
-            testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split, start_points[self.local_rank], end_points[self.local_rank], video_mode=True, num_frames=cfg.num_frames, use_whole_video_test=cfg.use_whole_video_test)
+            testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split, video_mode=True, num_frames=cfg.num_frames, use_whole_video_test=cfg.use_whole_video_test)
         else:
-            testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split, start_points[self.local_rank], end_points[self.local_rank])
+            testset3d_db = eval(cfg.testset)('test_' + cfg.testset_split)
 
         if cfg.task == 'hsdf_osdf_1net' or cfg.task == 'hsdf_osdf_2net' or cfg.task == 'hsdf_osdf_2net_pa':
             self.testset_loader = SDFDataset(testset3d_db, cfg=cfg, mode='test')
@@ -219,9 +222,9 @@ class Tester(Base):
             self.testset_loader = PoseDataset(testset3d_db, cfg=cfg, mode='test')
 
         self.itr_per_epoch = math.ceil(len(self.testset_loader) / cfg.num_gpus / cfg.test_batch_size)
-        self.batch_generator = DataLoader(dataset=self.testset_loader, batch_size=cfg.test_batch_size, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=False, persistent_workers=False)
+        self.batch_generator = DataLoader(dataset=self.testset_loader, batch_size=cfg.test_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=False, persistent_workers=False)
     
-    def _make_model(self, local_rank):
+    def _make_model(self):
         model_path = os.path.join(cfg.model_dir, 'snapshot_%d.pth.tar' % self.test_epoch)
         assert os.path.exists(model_path), 'Cannot find model at ' + model_path
         self.logger.info('Load checkpoint from {}'.format(model_path))
@@ -230,7 +233,8 @@ class Tester(Base):
         self.logger.info("Creating graph...")
         model = get_model(cfg, is_train=False)
         model = model.cuda()
-        model = NativeDDP(model, device_ids=[local_rank], output_device=local_rank)
+        model = nn.DataParallel(model)
+        # model = NativeDDP(model, device_ids=[local_rank], output_device=local_rank)
         ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['network'])
         model.eval()

@@ -158,7 +158,7 @@ def create_lmdb(data_root='../datasets/obman', mode='train'):
     opt['sdf_obj']['is_hand'] = False
 
     general_image_folder(opt['image'])
-    general_seg_folder(opt['seg'])
+    # general_seg_folder(opt['seg'])
     general_sdf_folder(opt['sdf_hand'])
     general_sdf_folder(opt['sdf_obj'])
 

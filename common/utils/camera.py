@@ -25,7 +25,7 @@ class PerspectiveCamera:
         new_cam_center = np.linalg.inv(self.K[:3, :3]).dot(new_img_center)
         self.K[0, 2], self.K[1, 2] = width / 2, height / 2
 
-        x, y, z = new_cam_center[0], new_cam_center[1], new_cam_center[2]
+        x, y, z = new_cam_center[0].item(), new_cam_center[1].item(), new_cam_center[2].item()
         sin_theta = -y / np.sqrt(1 + x ** 2 + y ** 2)
         cos_theta = np.sqrt(1 + x ** 2) / np.sqrt(1 + x ** 2 + y ** 2)
         R_x = np.array([[1, 0, 0], [0, cos_theta, -sin_theta], [0, sin_theta, cos_theta]], dtype=np.float32)

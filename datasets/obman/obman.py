@@ -103,6 +103,8 @@ class obman:
         sample = self.data[idx]
         sample_idx = sample['id']
 
+        output_path = os.path.join(output_path, 'result_obman_gt_0')
+
         pred_hand_mesh_path = os.path.join(output_path, 'sdf_mesh', sample_idx + '_hand.ply')
         gt_hand_mesh_path = os.path.join(self.mesh_hand_source, sample_idx + '.obj')
         if not os.path.exists(pred_hand_mesh_path):

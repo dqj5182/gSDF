@@ -41,7 +41,7 @@ class icp_ts():
         self.target_KDTree = KDTree(self.points_target)
         self.source_KDTree = KDTree(self.points_source)
 
-        self.trans = np.zeros((1,3), dtype = np.float)
+        self.trans = np.zeros((1,3), dtype = float)
         self.scale = 1.0
         self.A_c123 = []
 
@@ -86,7 +86,7 @@ class icp_ts():
             '''
             A_c0 = np.vstack([self.points_source.reshape(-1, 1), self.points_source[closest_source_points_index[:, 0], :].reshape(-1, 1)])
             if i == 0:
-                A_c1 = np.zeros((self.points_source.shape[0] + self.points_target.shape[0], 3), dtype=np.float) + np.array([1.0, 0.0, 0.0])
+                A_c1 = np.zeros((self.points_source.shape[0] + self.points_target.shape[0], 3), dtype=float) + np.array([1.0, 0.0, 0.0])
                 A_c1 = A_c1.reshape(-1, 1)
                 A_c2 = np.zeros_like(A_c1)
                 A_c2[1:,0] = A_c1[0:-1, 0]

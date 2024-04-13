@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument("--slurm", dest="slurm", action='store_true')
     parser.add_argument('--cfg', '-e', required=True, type=str)
     parser.add_argument('--gpu', type=str, dest='gpu_ids')
-    parser.add_argument('--local_rank', default=0, type=int)
+    # parser.add_argument('--local_rank', default=0, type=int)
     parser.add_argument('opts', help="Modify config options using the command-line", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
@@ -74,34 +74,35 @@ def main():
     update_config(cfg, args)
 
     cudnn.benchmark = True
-    if args.slurm:
-        world_size = int(os.environ['SLURM_NTASKS'])
-        local_rank = int(os.environ['SLURM_LOCALID'])
-        global_rank = int(os.environ['SLURM_PROCID'])
-        hostnames = subprocess.check_output(['scontrol', 'show', 'hostnames', os.environ['SLURM_JOB_NODELIST']])
-        master_addr = hostnames.split()[0].decode('utf-8')
-        os.environ['MASTER_ADDR'] = master_addr
-        os.environ['MASTER_PORT'] = str(29500)
-        os.environ['WORLD_SIZE'] = str(world_size)
-        os.environ['RANK'] = str(global_rank)
-        logger.info('Distributed Process %d, Total %d.' % (local_rank, world_size))
-        torch.cuda.set_device(local_rank)
-        torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    else:
-        local_rank = args.local_rank
-        device = 'cuda:%d' % local_rank
-        torch.cuda.set_device(local_rank)
-        torch.distributed.init_process_group(backend='nccl', init_method='env://')
-        world_size = torch.distributed.get_world_size()
-        rank = torch.distributed.get_rank()
-        logger.info('Distributed Process %d, Total %d.' % (args.local_rank, world_size))
+    # if args.slurm:
+    #     world_size = int(os.environ['SLURM_NTASKS'])
+    #     local_rank = int(os.environ['SLURM_LOCALID'])
+    #     global_rank = int(os.environ['SLURM_PROCID'])
+    #     hostnames = subprocess.check_output(['scontrol', 'show', 'hostnames', os.environ['SLURM_JOB_NODELIST']])
+    #     master_addr = hostnames.split()[0].decode('utf-8')
+    #     os.environ['MASTER_ADDR'] = master_addr
+    #     os.environ['MASTER_PORT'] = str(29500)
+    #     os.environ['WORLD_SIZE'] = str(world_size)
+    #     os.environ['RANK'] = str(global_rank)
+    #     logger.info('Distributed Process %d, Total %d.' % (local_rank, world_size))
+    #     torch.cuda.set_device(local_rank)
+    #     torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    # else:
+    #     pass
+        # local_rank = args.local_rank
+        # device = 'cuda:%d' % local_rank
+        # torch.cuda.set_device(local_rank)
+        # torch.distributed.init_process_group(backend='nccl', init_method='env://')
+        # world_size = torch.distributed.get_world_size()
+        # rank = torch.distributed.get_rank()
+        # logger.info('Distributed Process %d, Total %d.' % (args.local_rank, world_size))
 
-    if local_rank == 0:
-        writer_dict = {'writer': SummaryWriter(log_dir = cfg.log_dir), 'train_global_steps': 0}
+    # if local_rank == 0:
+    writer_dict = {'writer': SummaryWriter(log_dir = cfg.log_dir), 'train_global_steps': 0}
 
     trainer = Trainer()
     trainer._make_batch_generator()
-    trainer._make_model(local_rank)
+    trainer._make_model()
 
     if args.slurm:
         init_signal_handler()
@@ -109,7 +110,7 @@ def main():
     for epoch in range(trainer.start_epoch, cfg.end_epoch):
         trainer.tot_timer.tic()
         trainer.read_timer.tic()
-        trainer.train_sampler.set_epoch(epoch)
+        # trainer.train_sampler.set_epoch(epoch)
 
         for itr, (inputs, targets, metas) in enumerate(trainer.batch_generator):
             trainer.set_lr(epoch, itr)
@@ -147,7 +148,7 @@ def main():
                 loss, hand_pose_results, obj_pose_results = trainer.model(inputs, targets, metas, 'train')
 
             # backward
-            all_loss = sum(loss[k] for k in loss)
+            all_loss = sum(loss[k].mean() for k in loss)
             all_loss.backward()
 
             trainer.optimizer.step()
@@ -163,24 +164,24 @@ def main():
 
             record_dict = {}
             for k, v in loss.items():
-                record_dict[k] = reduce_tensor(v.detach(), world_size) * 1000.
+                record_dict[k] = v.detach().mean() * 1000.
             screen += ['%s: %.3f' % ('loss_' + k, v) for k, v in record_dict.items()]
 
-            if local_rank == 0:
-                tb_writer = writer_dict['writer']
-                global_steps = writer_dict['train_global_steps']
-                if itr % 10 == 0:
-                    trainer.logger.info(' '.join(screen))
-                    for k, v in record_dict.items():
-                        tb_writer.add_scalar('loss_' + k, v, global_steps)
-                    tb_writer.add_scalar('lr', trainer.get_lr(), global_steps)
-                    writer_dict['train_global_steps'] = global_steps + 10
+            # # if local_rank == 0:
+            tb_writer = writer_dict['writer']
+            global_steps = writer_dict['train_global_steps']
+            if itr % 10 == 0:
+                trainer.logger.info(' '.join(screen))
+                for k, v in record_dict.items():
+                    tb_writer.add_scalar('loss_' + k, v, global_steps)
+                tb_writer.add_scalar('lr', trainer.get_lr(), global_steps)
+                writer_dict['train_global_steps'] = global_steps + 10
 
             trainer.tot_timer.toc()
             trainer.tot_timer.tic()
             trainer.read_timer.tic()
         
-        if local_rank == 0 and (epoch % cfg.model_save_freq == 0 or epoch == cfg.end_epoch - 1):
+        if (epoch % cfg.model_save_freq == 0 or epoch == cfg.end_epoch - 1):
             trainer.save_model({
                 'epoch': epoch,
                 'network': trainer.model.state_dict(),
@@ -189,9 +190,9 @@ def main():
             writer_dict['writer'].close()
         
     torch.cuda.empty_cache()
-    tester = Tester(local_rank, cfg.end_epoch - 1)
+    tester = Tester(cfg.end_epoch - 1)
     tester._make_batch_generator()
-    tester._make_model(local_rank)
+    tester._make_model()
 
     with torch.no_grad():
         for itr, (inputs, metas) in tqdm(enumerate(tester.batch_generator)):
