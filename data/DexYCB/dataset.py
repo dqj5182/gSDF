@@ -70,7 +70,8 @@ class DexYCB:
         db = COCO(self.anno_file)
         data = {}
 
-        for aid in self.split:
+        # for aid in self.split:
+        for aid in self.split[:10]:
             sample = dict()
             ann = db.anns[aid]
             img_data = db.loadImgs(ann['image_id'])[0]
@@ -135,7 +136,8 @@ class DexYCB:
         if self.end_point is None:
             self.end_point = len(self.split)
         
-        for aid in self.split[self.start_point:self.end_point]:
+        # for aid in self.split[self.start_point:self.end_point]:
+        for aid in self.split[20:30]:
             sample = dict()
             ann = db.anns[aid]
             img_data = db.loadImgs(ann['image_id'])[0]
@@ -191,6 +193,7 @@ class DexYCB:
             pred_mano_joint = (cam_extr @ np.array(pred_hand_pose['joints']).transpose(1, 0)).transpose(1, 0)
             mano_joint_err = np.mean(np.linalg.norm(pred_mano_joint - sample['hand_joints_3d'], axis=1)) * 1000.
         except:
+            import pdb; pdb.set_trace()
             mano_joint_err = None
 
         pred_obj_pose_path = os.path.join(output_path, 'obj_pose', sample_idx + '.json')
@@ -201,12 +204,14 @@ class DexYCB:
             pred_obj_center = (cam_extr @ np.array(pred_obj_pose['center']).reshape((1, 3)).transpose(1, 0)).squeeze()
             obj_center_err = np.linalg.norm(pred_obj_center - sample['obj_center_3d']) * 1000.
         except:
+            import pdb; pdb.set_trace()
             obj_center_err = None
-        try:
-            pred_obj_corners = (cam_extr @ np.array(pred_obj_pose['corners']).transpose(1, 0)).transpose(1, 0)
-            obj_corner_err = np.mean(np.linalg.norm(pred_obj_corners - sample['obj_corners_3d'], axis=1)) * 1000.
-        except:
-            obj_corner_err = None
+        # try:
+        #     pred_obj_corners = (cam_extr @ np.array(pred_obj_pose['corners']).transpose(1, 0)).transpose(1, 0)
+        #     obj_corner_err = np.mean(np.linalg.norm(pred_obj_corners - sample['obj_corners_3d'], axis=1)) * 1000.
+        # except:
+        #     import pdb; pdb.set_trace()
+        #     obj_corner_err = None
 
         pred_hand_mesh_path = os.path.join(output_path, 'sdf_mesh', sample_idx + '_hand.ply')
         gt_hand_mesh_path = os.path.join(self.cur_dir, 'data', 'mesh_data', 'mesh_hand', sample_idx + '.obj')
@@ -239,6 +244,7 @@ class DexYCB:
             precision_2 = np.mean(two_distances < threshold).astype(np.float32)
             fscore_hand_5 = 2 * precision_1 * precision_2 / (precision_1 + precision_2 + 1e-7)
         except:
+            import pdb; pdb.set_trace()
             chamfer_hand = None
             fscore_hand_1 = None
             fscore_hand_5 = None
@@ -274,6 +280,7 @@ class DexYCB:
             precision_2 = np.mean(two_distances < threshold).astype(np.float32)
             fscore_obj_10 = 2 * precision_1 * precision_2 / (precision_1 + precision_2 + 1e-7)
         except:
+            import pdb; pdb.set_trace()
             chamfer_obj = None
             fscore_obj_5 = None
             fscore_obj_10 = None
@@ -288,7 +295,7 @@ class DexYCB:
         error_dict['fscore_obj_10'] = fscore_obj_10
         error_dict['mano_joint'] = mano_joint_err
         error_dict['obj_center'] = obj_center_err
-        error_dict['obj_corner'] = obj_corner_err
+        # error_dict['obj_corner'] = obj_corner_err
 
         return error_dict
         

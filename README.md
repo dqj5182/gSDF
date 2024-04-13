@@ -88,5 +88,5 @@ CUDA_VISIBLE_DEVICES=1 python eval.py --exp_dir ../outputs/hsdf_osdf_2net_pa/gsd
 ```
 For DexYCB
 ```
-CUDA_VISIBLE_DEVICES=1 python eval.py --exp_dir ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
+CUDA_VISIBLE_DEVICES=7 python eval.py --exp_dir ../outputs/hsdf_osdf_2net_video_pa/gsdf_dexycb_video
 ```

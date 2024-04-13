@@ -17,13 +17,13 @@ import shutil
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_dir', required=True, type=str)
-    parser.add_argument('--num_proc', default=10, type=int)
+    parser.add_argument('--num_proc', default=1, type=int)
     args = parser.parse_args()
     return args
 
 
 def evaluate(queue, db, output_dir):
-    for idx, sample in tqdm(enumerate(db.data)):
+    for idx, sample in tqdm(enumerate(db.data), total=len(db.data)):
         error_dict = db._evaluate(output_dir, idx)
         queue.put([tuple(error_dict.values())])
 
@@ -69,6 +69,7 @@ def main():
         p = Process(target=evaluate, args=(queue, testset_db, args.exp_dir))
         p.start()
         process_list.append(p)
+        # evaluate(queue, testset_db, args.exp_dir)
 
     summary = []
     for p in process_list:
@@ -84,12 +85,12 @@ def main():
     summary_filename = "eval_result.txt"
 
     with open(os.path.join(args.exp_dir, summary_filename), "w") as f:
-        eval_result = [[] for i in range(9)]
-        name_list = ['sample_id', 'chamfer hand', 'fs_hand@1mm', 'fs_hand@5mm', 'chamfer obj', 'fs_obj@5mm', 'fs_obj@10mm', 'hand joint', 'obj center', 'obj corner']
+        name_list = ['sample_id', 'chamfer hand', 'fs_hand@1mm', 'fs_hand@5mm', 'chamfer obj', 'fs_obj@5mm', 'fs_obj@10mm', 'hand joint', 'obj center']
+        eval_result = [[] for i in range(len(name_list)-1)]
         data_list = []
         for idx, result in enumerate(summary):
             data_sample = [result[0]]
-            for i in range(9):
+            for i in range(len(name_list)-1):
                 if result[i + 1] is not None:
                     eval_result[i].append(result[i + 1])
                     data_sample.append(result[i + 1].round(3))
@@ -116,7 +117,6 @@ def main():
         fscore_obj_5 = "f-score obj @ 10mm: {}\n".format(np.mean(eval_result[5]))
         mean_mano_joint_err = "mean mano joint error: {}\n".format(np.mean(eval_result[6]))
         mean_obj_center_err = "mean obj center error: {}\n".format(np.mean(eval_result[7]))
-        mean_obj_corner_err = "mean obj corner error: {}\n".format(np.mean(eval_result[8]))
         print(mean_chamfer_hand); f.write(mean_chamfer_hand)
         print(median_chamfer_hand); f.write(median_chamfer_hand)
         print(fscore_hand_1); f.write(fscore_hand_1)
@@ -127,7 +127,6 @@ def main():
         print(fscore_obj_5); f.write(fscore_obj_5)
         print(mean_mano_joint_err); f.write(mean_mano_joint_err)
         print(mean_obj_center_err); f.write(mean_obj_center_err)
-        print(mean_obj_corner_err); f.write(mean_obj_corner_err)
 
         worst_hand_dir = os.path.join(args.exp_dir, 'worst_hand'); os.makedirs(worst_hand_dir, exist_ok=True)
         best_hand_dir = os.path.join(args.exp_dir, 'best_hand'); os.makedirs(best_hand_dir, exist_ok=True)
