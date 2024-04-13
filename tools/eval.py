@@ -52,7 +52,7 @@ def main():
         mesh_hand_source = '../datasets/dexycb/data/mesh_data/mesh_hand/'
         mesh_obj_source = '../datasets/dexycb/data/mesh_data/mesh_obj/'
 
-    with open(os.path.join(args.dir, '../exp.yaml'), 'r') as f:
+    with open(os.path.join(args.dir, 'exp.yaml'), 'r') as f:
         cfg = yaml.safe_load(f)
 
     start_points = []

@@ -46,7 +46,7 @@ pip install -r requirements.txt
 - Download processed [SDF files](https://drive.google.com/drive/folders/15yjzjYcqyOiIbX-6uaeYOezVH4stDTCG) and [json files](https://drive.google.com/drive/folders/1qULhMx1PrnXkihrPacIFzLOT5H2FZSj7).
 - Run `${ROOT}/preprocess/cocoify_dexycb.py` to generate LMDB training files. The data organization looks like this: 
    ```
-   ${ROOT}/datasets/obman
+   ${ROOT}/datasets/dexycb
    └── splits
        toolkit
        dexycb_train_s0.json
