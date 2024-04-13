@@ -82,8 +82,8 @@ class dexycb:
         db = COCO(self.anno_file)
         data = {}
 
-        # for aid in self.split:
-        for aid in self.split[:10]:
+        for aid in self.split:
+        # for aid in self.split[10:20]:
             sample = dict()
             ann = db.anns[aid]
             img_data = db.loadImgs(ann['image_id'])[0]
@@ -148,11 +148,14 @@ class dexycb:
         if self.end_point is None:
             self.end_point = len(self.split)
         
-        # for aid in self.split[self.start_point:self.end_point]:
-        for aid in self.split[:10]:
+        for aid in self.split[self.start_point:self.end_point]:
+        # for aid in self.split[10:20]:
             sample = dict()
             ann = db.anns[aid]
             img_data = db.loadImgs(ann['image_id'])[0]
+
+            # if img_data['file_name'] != '3_20200820_135508_836212060125_60':
+            #     continue
 
             sample['id'] = img_data['file_name']
             sample['subject_id'] = _SUBJECTS[int(sample['id'].split('_')[0]) - 1]
@@ -211,6 +214,7 @@ class dexycb:
         with open(pred_obj_pose_path, 'r') as f:
             pred_obj_pose = json.load(f)
         cam_extr = np.array(pred_obj_pose['cam_extr'])
+
         try:
             pred_obj_center = (cam_extr @ np.array(pred_obj_pose['center']).reshape((1, 3)).transpose(1, 0)).squeeze()
             obj_center_err = np.linalg.norm(pred_obj_center - sample['obj_center_3d']) * 1000.
@@ -222,7 +226,7 @@ class dexycb:
         except:
             obj_corner_err = None
 
-        pred_hand_mesh_path = os.path.join(output_path, 'sdf_mesh', sample_idx + '_hand.ply')
+        pred_hand_mesh_path = os.path.join(output_path, 'sdf_mesh', sample_idx + '_hgt_hand_mesh.and.ply')
         gt_hand_mesh_path = os.path.join(self.cur_dir, 'data', 'mesh_data', 'mesh_hand', sample_idx + '.obj')
         try:
             pred_hand_mesh = trimesh.load(pred_hand_mesh_path, process=False)
@@ -291,6 +295,7 @@ class dexycb:
             chamfer_obj = None
             fscore_obj_5 = None
             fscore_obj_10 = None
+        # import pdb; pdb.set_trace()
         
         error_dict = {}
         error_dict['id'] = sample_idx

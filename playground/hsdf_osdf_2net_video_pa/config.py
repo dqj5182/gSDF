@@ -100,7 +100,7 @@ cfg.use_whole_video_test = False
 
 ## others
 cfg.use_lmdb = False
-cfg.num_threads = 6
+cfg.num_threads = 0 #6
 cfg.gpu_ids = (0, 1, 2, 3)
 cfg.num_gpus = 4
 cfg.checkpoint = 'model.pth.tar'

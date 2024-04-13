@@ -19,7 +19,7 @@ from config import cfg
 from net import get_model
 from datasets.sdf_dataset import SDFDataset
 from datasets.sdf_video_dataset import SDFVideoDataset
-from datasets.pose_dataset import PoseDataset
+# from datasets.pose_dataset import PoseDataset
 
 
 class Base(object):
@@ -117,7 +117,7 @@ class Trainer(Base):
             self.trainset_loader = MultipleDatasets(train_dataset_loaders, make_same_len=True)
             self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
             # self.train_sampler = DistributedSampler(self.trainset_loader)
-            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
+            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=0, pin_memory=True, drop_last=True, persistent_workers=False)
         else:
             exec(f'from datasets.{cfg.trainset_3d}.{cfg.trainset_3d} import {cfg.trainset_3d}')
             if 'video' in cfg.task:
@@ -135,7 +135,7 @@ class Trainer(Base):
             self.itr_per_epoch = math.ceil(len(self.trainset_loader) / cfg.num_gpus / cfg.train_batch_size)
             # self.train_sampler = DistributedSampler(self.trainset_loader)
             # self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, sampler=self.train_sampler, drop_last=True, persistent_workers=False)
-            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=True, persistent_workers=False)
+            self.batch_generator = DataLoader(dataset=self.trainset_loader, batch_size=cfg.train_batch_size * cfg.num_gpus, shuffle=False, num_workers=0, pin_memory=True, drop_last=True, persistent_workers=False)
 
     def _make_model(self):
         # prepare network
@@ -222,7 +222,7 @@ class Tester(Base):
             self.testset_loader = PoseDataset(testset3d_db, cfg=cfg, mode='test')
 
         self.itr_per_epoch = math.ceil(len(self.testset_loader) / cfg.num_gpus / cfg.test_batch_size)
-        self.batch_generator = DataLoader(dataset=self.testset_loader, batch_size=cfg.test_batch_size * cfg.num_gpus, shuffle=False, num_workers=cfg.num_threads, pin_memory=True, drop_last=False, persistent_workers=False)
+        self.batch_generator = DataLoader(dataset=self.testset_loader, batch_size=cfg.test_batch_size * cfg.num_gpus, shuffle=False, num_workers=0, pin_memory=True, drop_last=False, persistent_workers=False)
     
     def _make_model(self):
         model_path = os.path.join(cfg.model_dir, 'snapshot_%d.pth.tar' % self.test_epoch)

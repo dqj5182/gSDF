@@ -391,6 +391,7 @@ def convert_sdf_samples_to_ply(sdf_tensor, voxel_origin, voxel_size, is_hand, pl
             icp_solver = icp_ts(pred_mesh, gt_mesh)
             icp_solver.sample_mesh(30000, 'both')
             icp_solver.run_icp_f(max_iter = 100)
+            import pdb; pdb.set_trace()
             icp_solver.export_source_mesh(os.path.join(cfg.sdf_result_dir, ply_filename_out))
             trans, scale = icp_solver.get_trans_scale()
         else:

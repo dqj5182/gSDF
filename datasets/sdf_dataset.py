@@ -204,7 +204,7 @@ class SDFDataset(BaseDataset):
 
             input_iter = dict(img=img)
             meta_iter = dict(cam_intr=cam_intr, cam_extr=cam_extr, id=sample_key, hand_center_3d=hand_center_3d, hand_poses=hand_poses, hand_shapes=hand_shapes, obj_rest_corners_3d=obj_rest_corners_3d, obj_transform=obj_transform)
-
+            
             return input_iter, meta_iter
 
         

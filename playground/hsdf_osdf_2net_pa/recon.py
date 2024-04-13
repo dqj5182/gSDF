@@ -312,8 +312,8 @@ def convert_sdf_samples_to_ply(sdf_tensor, voxel_origin, voxel_size, is_hand, pl
         verts, faces, normals, values = skimage.measure.marching_cubes(sdf_tensor, level=0.0, spacing=[voxel_size] * 3)
         with open(os.path.join(cfg.hand_pose_result_dir, '_'.join(ply_filename_out.split('_')[:-1]) + '.json'), 'r') as f:
             data = json.load(f)
-            cam_extr = np.array(data['cam_extr'], dtype=np.float32)
-            verts = (cam_extr @ verts.transpose(1, 0)).transpose(1, 0)
+        cam_extr = np.array(data['cam_extr'], dtype=np.float32)
+        verts = (cam_extr @ verts.transpose(1, 0)).transpose(1, 0)
     except:
         logger.warning("Cannot reconstruct mesh from '{}'".format(ply_filename_out))
         return None, None, np.array([0,0,0]), np.array([1 / cfg.recon_scale])

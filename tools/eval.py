@@ -78,6 +78,7 @@ def main():
         p = Process(target=evaluate, args=(queue, testset_db, args.dir))
         p.start()
         process_list.append(p)
+        # evaluate(queue, testset_db, args.dir)
 
     summary = []
     for p in process_list:
